@@ -1,6 +1,6 @@
 {
   "name": "lobar",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "thin shell wrapper for lodash.chain()",
   "main": "index.js",
   "repository": "https://github.com/sodiumjoe/lobar.git",
