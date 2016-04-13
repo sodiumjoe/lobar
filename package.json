@@ -1,0 +1,19 @@
+{
+  "name": "lobar",
+  "version": "0.0.0",
+  "description": "thin shell wrapper for lodash.chain()",
+  "main": "index.js",
+  "repository": "https://github.com/sodiumjoe/lobar.git",
+  "bin": {
+    "lbr": "index.js"
+  },
+  "author": "joe moon <joe@xoxomoon.com>",
+  "license": "ISC",
+  "dependencies": {
+    "lodash": "^4.10.0",
+    "yargs": "^4.6.0"
+  },
+  "devDependencies": {
+    "eslint": "^2.7.0"
+  }
+}
