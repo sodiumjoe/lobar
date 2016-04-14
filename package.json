@@ -10,6 +10,7 @@
   "author": "joe moon <joe@xoxomoon.com>",
   "license": "ISC",
   "dependencies": {
+    "jsome": "^2.3.24",
     "lodash": "^4.10.0",
     "yargs": "^4.6.0"
   },

@@ -1,6 +1,7 @@
 #! /usr/bin/env node
 
 var _ = require('lodash');
+var jsome = require('jsome');
 var argv = require('yargs')
     .usage('Usage: $0 <input JSON string> <operators> [options]')
     .example('$0 "[\'foo\']" ".map(upperCase)"', 'upperCase array elements')
@@ -33,9 +34,8 @@ getInputs(function(err, inputs) {
   var evalStr = '_.chain(' + jsonString.trim() + ')' + operators + '.value()';
   argv.v && console.log('string to eval: ' + evalStr);
   var result = evalWith(evalStr);
-  var output = JSON.stringify(result, null, argv.p ? 2 : 0)
   argv.v && console.log('result: ');
-  console.log(output);
+  argv.p ? jsome(result) : console.log(JSON.stringify(result));
 });
 
 function getInputs(cb) {
