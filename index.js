@@ -2,40 +2,84 @@
 
 var _ = require('lodash');
 var jsome = require('jsome');
-var argv = require('yargs')
-    .usage('Usage: $0 <input JSON string> <operators> [options]')
-    .example('$0 "[\'foo\']" ".map(upperCase)"', 'upperCase array elements')
-    .boolean('v')
-    .alias('v', 'verbose')
-    .boolean('p')
-    .alias('v', 'prettyPrint')
-    .help('h')
-    .alias('h', 'help')
-    .check(function(argv) {
-      if (process.stdin.isTTY && argv._.length < 2) {
-        throw new Error('not enough arguments');
-      }
-      if (!process.stdin.isTTY && _.isEmpty(argv._)) {
-        throw new Error('not enough arguments');
-      }
-      return true;
-    })
-    .argv;
+var yargs = require('yargs');
+var argv = yargs
+  .env('LOBAR')
+  .usage('Usage: $0 <JSON> <method> <arg> [method arg, ...] [options]')
+  .example('$0 "[\'foo\']" map upperCase"', 'upperCase array elements')
+  .count('v')
+  .alias('v', 'verbose')
+  .describe('v', 'verbosity level')
+  .boolean('p')
+  .alias('p', 'prettyPrint')
+  .describe('p', 'pretty print output')
+  .help('h')
+  .alias('h', 'help')
+  .argv;
 
 var args = argv['_'];
 
 getInputs(function(err, inputs) {
   'use strict';
+
   if (err) { return console.error(err); }
+
   var jsonString = inputs.jsonString || '';
-  argv.v && console.log('input JSON: ' + jsonString);
-  var operators = inputs.operators || '';
-  argv.v && console.log('operators: ' + operators);
-  var evalStr = '_.chain(' + jsonString.trim() + ')' + operators + '.value()';
-  argv.v && console.log('string to eval: ' + evalStr);
-  var result = evalWith(evalStr);
-  argv.v && console.log('result: ');
+  // argv.p ? jsome(jsonString) : console.log(JSON.stringify(jsonString));
+
+  var args = _.reduce(inputs.args, function(memo, arg) {
+    if (_.head(arg) === '.') {
+      return memo.concat(['get', arg.slice(1)]);
+    }
+    if (_.last(arg) === '.') {
+      return memo.concat([arg.slice(0, -1), undefined]);
+    }
+    return memo.concat(arg);
+  }, []);
+
+  if (args.length % 2 !== 0 || _.isEmpty(args)) {
+    console.error('Error: not enough arguments\n');
+    return yargs.showHelp();
+  }
+
+  argv.v && console.log('arguments:');
+  argv.v && console.log(args);
+
+  var data;
+  try {
+    data = JSON.parse(jsonString);
+  } catch(e) {
+    console.error('Error: invalid json input');
+    console.error(e.stack);
+    return yargs.showHelp();
+  }
+
+  var pairs = _.reduce(args, function(memo, arg, i) {
+    if (i % 2 === 0) {
+      return memo.concat([[arg]]);
+    }
+    _.last(memo).push(arg);
+    return memo;
+  }, []);
+
+  var result = _.reduce(pairs, function(chainObj, pair) {
+
+    var method = pair[0];
+    var arg = pair[1];
+    var parsedArg;
+
+    try {
+      parsedArg = evalWith(arg, _);
+    } catch(e) {
+      parsedArg = arg;
+    }
+
+    return chainObj[method](parsedArg);
+
+  }, _.chain(data)).value();
+
   argv.p ? jsome(result) : console.log(JSON.stringify(result));
+
 });
 
 function getInputs(cb) {
@@ -44,22 +88,17 @@ function getInputs(cb) {
   try {
 
     var jsonString = '';
-    var operators = '';
 
     if (process.stdin.isTTY) {
-      jsonString = args[0];
-      operators = args[1];
-      return cb(null, { jsonString: jsonString, operators: operators });
+      return cb(null, { jsonString: args[0], args: args.slice(1)});
     }
 
     process.stdin.on('data', function(chunk) {
       jsonString += chunk;
     });
 
-    operators = args[0];
-
     process.stdin.on('end', function() {
-      cb(null, { jsonString: jsonString, operators: operators });
+      cb(null, { jsonString: jsonString, args: args.slice(0) });
     });
 
   } catch(e) {
@@ -68,7 +107,7 @@ function getInputs(cb) {
 
 }
 
-function evalWith(str) {
-  with(_)
+function evalWith(str, context) {
+  with(context)
   return eval(str);
 }
