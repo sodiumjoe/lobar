@@ -17,6 +17,8 @@ var argv = yargs
     describe: '<required> input json',
     type: 'string'
   })
+  .boolean('l')
+  .alias('l', 'loose')
   .count('v')
   .alias('v', 'verbose')
   .describe('v', 'verbosity level')
@@ -32,8 +34,7 @@ getInputs(argv, function(err, inputs) {
 
   if (err) { return console.error(err); }
 
-  var jsonString = inputs.jsonString || '';
-  // argv.p ? jsome(jsonString) : console.log(JSON.stringify(jsonString));
+  var jsonString = inputs.jsonString;
 
   var args = parseArgs(inputs.args);
 
@@ -48,7 +49,7 @@ getInputs(argv, function(err, inputs) {
   var data;
 
   try {
-    data = JSON.parse(jsonString);
+    data = argv.l ? eval( '(' + jsonString + ')' ) : JSON.parse(jsonString);
   } catch(e) {
     console.error('Error: invalid json input');
     console.error(e.stack);
