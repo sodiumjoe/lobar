@@ -2,6 +2,7 @@
 
 var _ = require('lodash');
 var jsome = require('jsome');
+var vm = require('vm');
 var yargs = require('yargs');
 var argv = yargs
   .env('LOBAR')
@@ -29,6 +30,9 @@ var argv = yargs
   .alias('h', 'help')
   .argv;
 
+var lodashContext = new vm.createContext(_);
+var emptyContext = new vm.createContext({});
+
 getInputs(argv, function(err, inputs) {
   'use strict';
 
@@ -49,7 +53,7 @@ getInputs(argv, function(err, inputs) {
   var data;
 
   try {
-    data = argv.l ? eval( '(' + jsonString + ')' ) : JSON.parse(jsonString);
+    data = argv.l ? evalWith('(' + jsonString + ')', emptyContext) : JSON.parse(jsonString);
   } catch(e) {
     console.error('Error: invalid json input');
     console.error(e.stack);
@@ -70,7 +74,7 @@ getInputs(argv, function(err, inputs) {
     var parsedArg;
 
     try {
-      parsedArg = evalWith(arg, _);
+      parsedArg = evalWith(arg, lodashContext);
     } catch(e) {
       parsedArg = arg;
     }
@@ -145,6 +149,6 @@ function getInputs(argv, cb) {
 }
 
 function evalWith(str, context) {
-  with(context)
-  return eval(str);
+  var script = new vm.Script(str);
+  return script.runInContext(context);
 }
