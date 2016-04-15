@@ -1,6 +1,6 @@
 # lobar
 
-A thin shell wrapper for [lodash](https://lodash.com/);
+A thin shell wrapper for [lodash.chain()](https://lodash.com/).
 
 ## install
 
@@ -21,7 +21,7 @@ Options:
   -h, --help         Show help                                         [boolean]
 
 Examples:
-  lbr "['foo']" map upperCase"  upperCase array elements
+  lbr '["foo"]' map upperCase"  upperCase array elements
 
 ```
 ### pipe
