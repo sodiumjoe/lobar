@@ -29,7 +29,7 @@ getInputs(function(err, inputs) {
 
   var args = parseArgs(inputs.args);
 
-  if (args.length % 2 !== 0 || _.isEmpty(args)) {
+  if (_.isEmpty(args) || args.length % 2 !== 0) {
     console.error('Error: not enough arguments\n');
     return yargs.showHelp();
   }
@@ -38,6 +38,7 @@ getInputs(function(err, inputs) {
   argv.v && console.log(args);
 
   var data;
+
   try {
     data = JSON.parse(jsonString);
   } catch(e) {
@@ -47,6 +48,11 @@ getInputs(function(err, inputs) {
   }
 
   var pairs = makePairs(args);
+
+  argv.v && argv.v > 1 && console.log('lodash string:');
+  argv.v && argv.v > 1 && console.log(_.reduce(pairs, function(memo, pair, i) {
+    return memo + '.' + pair[0] + '(' + pair[1] + ')';
+  }, '_.chain(data)') + '.value()');
 
   var result = _.reduce(pairs, function(chainObj, pair) {
 
