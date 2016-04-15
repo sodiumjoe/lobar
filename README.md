@@ -54,27 +54,6 @@ $ echo '{"foo": {"bar": "baz"}}' | lbr get foo.bar
 > "baz"
 ```
 
-A trailing `.` on a method applies it with no argument:
-
-```shell
-$ echo '"foo"' | lbr isString.
-> true
-```
-
-is equivalent to:
-
-```shell
-$ echo '"foo"' | lbr isString undefined
-> true
-```
-
-A more useful example:
-
-```shell
-$ echo '[{"foo":"bar"}, {"foo": 1}]' | lbr map foo filter. first. isString.
-> true
-```
-
 ### caveats
 
 If you want to use a string argument for a method that collides with a lodash
@@ -101,3 +80,6 @@ generally enough for what I want to do at the command line.
 ## TODO
 
 * [fix eval](https://nodejs.org/api/vm.html#vm_script_runinnewcontext_sandbox_options)
+* loose input mode -l --loose
+* fix -h
+* -V --version

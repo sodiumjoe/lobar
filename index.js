@@ -6,7 +6,7 @@ var yargs = require('yargs');
 var argv = yargs
   .env('LOBAR')
   .usage('Usage: $0 <JSON> <method> <arg> [method arg, ...] [options]')
-  .example('$0 "[\'foo\']" map upperCase"', 'upperCase array elements')
+  .example('$0 \'["foo"]\' map upperCase"', 'upperCase array elements')
   .count('v')
   .alias('v', 'verbose')
   .describe('v', 'verbosity level')
@@ -27,15 +27,7 @@ getInputs(function(err, inputs) {
   var jsonString = inputs.jsonString || '';
   // argv.p ? jsome(jsonString) : console.log(JSON.stringify(jsonString));
 
-  var args = _.reduce(inputs.args, function(memo, arg) {
-    if (_.head(arg) === '.') {
-      return memo.concat(['get', arg.slice(1)]);
-    }
-    if (_.last(arg) === '.') {
-      return memo.concat([arg.slice(0, -1), undefined]);
-    }
-    return memo.concat(arg);
-  }, []);
+  var args = parseArgs(inputs.args);
 
   if (args.length % 2 !== 0 || _.isEmpty(args)) {
     console.error('Error: not enough arguments\n');
@@ -54,13 +46,7 @@ getInputs(function(err, inputs) {
     return yargs.showHelp();
   }
 
-  var pairs = _.reduce(args, function(memo, arg, i) {
-    if (i % 2 === 0) {
-      return memo.concat([[arg]]);
-    }
-    _.last(memo).push(arg);
-    return memo;
-  }, []);
+  var pairs = makePairs(args);
 
   var result = _.reduce(pairs, function(chainObj, pair) {
 
@@ -81,6 +67,35 @@ getInputs(function(err, inputs) {
   argv.p ? jsome(result) : console.log(JSON.stringify(result));
 
 });
+
+function parseArgs(args) {
+  return _.reduce(args, function(memo, arg) {
+    if (_.head(arg) === '.') {
+      return memo.concat(['get', arg.slice(1)]);
+    }
+    if (_[arg] && _[arg].length === 1) {
+      return memo.concat([arg, undefined]);
+    }
+    return memo.concat(arg);
+  }, []);
+}
+
+function makePairs(args) {
+  return _.reduce(args, function(memo, arg, i) {
+    if (i % 2 === 0) {
+      return _.assign({}, memo, {
+        temp: arg
+      });
+    }
+    return _.assign({}, memo, {
+      temp: null,
+      memo: memo.memo.concat([[memo.temp, arg]])
+    });
+  }, {
+    temp: null,
+    memo: []
+  }).memo;
+}
 
 function getInputs(cb) {
   'use strict';
