@@ -102,20 +102,20 @@ function parseArgs(args) {
 }
 
 function makePairs(args) {
-  return _.reduce(args, function(memo, arg, i) {
-    if (i % 2 === 0) {
+  return _.reduce(args, function(memo, arg) {
+    if (_.isNull(memo.method)) {
       return _.assign({}, memo, {
-        temp: arg
+        method: arg
       });
     }
     return _.assign({}, memo, {
-      temp: null,
-      memo: memo.memo.concat([[memo.temp, arg]])
+      pairs: memo.pairs.concat([[memo.method, arg]]),
+      method: null
     });
   }, {
-    temp: null,
-    memo: []
-  }).memo;
+    method: null,
+    pairs: []
+  }).pairs;
 }
 
 function getInputs(argv, cb) {
@@ -125,12 +125,13 @@ function getInputs(argv, cb) {
 
     var jsonString = '';
 
+    if (process.stdin.isTTY && !argv.d) {
+      yargs.showHelp();
+      console.error('Missing required argument: d');
+      return process.exit();
+    }
+
     if (process.stdin.isTTY) {
-      if (!argv.d) {
-        yargs.showHelp();
-        console.error('Missing required argument: d');
-        process.exit();
-      }
       return cb(null, { jsonString: argv.d, args: argv._ });
     }
 
