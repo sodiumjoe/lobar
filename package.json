@@ -1,12 +1,16 @@
 {
   "name": "lobar",
   "version": "0.3.2",
-  "description": "thin shell wrapper for lodash.chain()",
+  "description": "A thin shell wrapper for lodash.chain()",
+  "author": "Joe Moon <joe@xoxomoon.com> (https://joe.xoxomoon.com)",
   "main": "index.js",
   "repository": "https://github.com/sodiumjoe/lobar.git",
+  "keywords": ["lodash", "shell", "bash", "jq", "pipe", "unix", "json"],
+  "bugs": "https://github.com/sodiumjoe/lobar/issues",
   "bin": {
     "lbr": "index.js"
   },
+  "preferGlobal": true,
   "author": "joe moon <joe@xoxomoon.com>",
   "license": "ISC",
   "dependencies": {
