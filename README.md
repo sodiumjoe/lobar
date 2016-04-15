@@ -81,4 +81,3 @@ generally enough for what I want to do at the command line.
 
 * [fix eval](https://nodejs.org/api/vm.html#vm_script_runinnewcontext_sandbox_options)
 * loose input mode -l --loose
-* -d data

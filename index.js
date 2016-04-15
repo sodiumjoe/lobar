@@ -12,6 +12,11 @@ var argv = yargs
   .example('echo \'{"foo": "bar"}\' | $0 get foo', '"bar"')
   .example('echo \'{"foo": "bar"}\' | $0 .foo', '"bar"')
   .wrap(null)
+  .option('d', {
+    alias: 'data',
+    describe: '<required> input json',
+    type: 'string'
+  })
   .count('v')
   .alias('v', 'verbose')
   .describe('v', 'verbosity level')
@@ -22,9 +27,7 @@ var argv = yargs
   .alias('h', 'help')
   .argv;
 
-var args = argv['_'];
-
-getInputs(function(err, inputs) {
+getInputs(argv, function(err, inputs) {
   'use strict';
 
   if (err) { return console.error(err); }
@@ -110,7 +113,7 @@ function makePairs(args) {
   }).memo;
 }
 
-function getInputs(cb) {
+function getInputs(argv, cb) {
   'use strict';
 
   try {
@@ -118,7 +121,12 @@ function getInputs(cb) {
     var jsonString = '';
 
     if (process.stdin.isTTY) {
-      return cb(null, { jsonString: args[0], args: args.slice(1)});
+      if (!argv.d) {
+        yargs.showHelp();
+        console.error('Missing required argument: d');
+        process.exit();
+      }
+      return cb(null, { jsonString: argv.d, args: argv._ });
     }
 
     process.stdin.on('data', function(chunk) {
@@ -126,7 +134,7 @@ function getInputs(cb) {
     });
 
     process.stdin.on('end', function() {
-      cb(null, { jsonString: jsonString, args: args.slice(0) });
+      cb(null, { jsonString: jsonString, args: argv._ });
     });
 
   } catch(e) {
