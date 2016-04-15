@@ -5,6 +5,8 @@ var jsome = require('jsome');
 var yargs = require('yargs');
 var argv = yargs
   .env('LOBAR')
+  .version()
+  .alias('V', 'version')
   .usage('Usage: $0 <JSON> <method> <arg> [method arg, ...] [options]')
   .example('$0 \'["foo"]\' map upperCase"', 'upperCase array elements')
   .count('v')
