@@ -81,7 +81,9 @@ function parseArgs(args) {
     if (_.head(arg) === '.') {
       return memo.concat(['get', arg.slice(1)]);
     }
-    if (_[arg] && _[arg].length === 1) {
+    if ((memo.length % 2 === 0)
+        && _[arg]
+        && _[arg].length === 1) {
       return memo.concat([arg, undefined]);
     }
     return memo.concat(arg);
