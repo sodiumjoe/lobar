@@ -71,6 +71,15 @@ echo '[{"isString": true}]' | lbr filter isString
 []
 ```
 
+### environment variables
+
+You can set options using environment variables:
+
+```shell
+$ LOBAR_PRETTY_PRINT=true lbr -d '{"foo": "bar"}' .foo
+> "bar"
+```
+
 ## why?
 
 I really like [jq](https://stedolan.github.io/jq/), but I have to look up the
