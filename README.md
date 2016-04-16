@@ -79,4 +79,3 @@ generally enough for what I want to do at the command line.
 
 ## TODO
 
-* [fix eval](https://nodejs.org/api/vm.html#vm_script_runinnewcontext_sandbox_options)
