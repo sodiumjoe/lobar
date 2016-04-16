@@ -88,3 +88,4 @@ generally enough for what I want to do at the command line.
 
 ## TODO
 
+* interactive mode
