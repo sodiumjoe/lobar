@@ -2,8 +2,11 @@
 
 var _ = require('lodash');
 var jsome = require('jsome');
-var vm = require('vm');
 var yargs = require('yargs');
+var parseJson = require('./lib/parseJson.js');
+var parseArgs = require('./lib/parseArgs.js');
+var evalUtils = require('./lib/eval.js');
+
 var argv = yargs
   .env('LOBAR')
   .version()
@@ -30,93 +33,35 @@ var argv = yargs
   .alias('h', 'help')
   .argv;
 
-var lodashContext = new vm.createContext(_);
-var emptyContext = new vm.createContext({});
-
 getInputs(argv, function(err, inputs) {
   'use strict';
 
   if (err) { return console.error(err); }
 
-  var jsonString = inputs.jsonString;
-
-  var args = parseArgs(inputs.args);
-
-  if (_.isEmpty(args) || args.length % 2 !== 0) {
-    console.error('Error: not enough arguments\n');
-    return yargs.showHelp();
-  }
-
-  argv.v && console.log('arguments:');
-  argv.v && console.log(args);
-
   var data;
 
   try {
-    data = argv.l ? evalWith('(' + jsonString + ')', emptyContext) : JSON.parse(jsonString);
+    data = parseJson(inputs.jsonString, argv.l);
   } catch(e) {
     console.error('Error: invalid json input');
     console.error(e.stack);
     return yargs.showHelp();
   }
 
-  var pairs = makePairs(args);
+  var args;
 
-  argv.v && argv.v > 1 && console.log('lodash string:');
-  argv.v && argv.v > 1 && console.log(_.reduce(pairs, function(memo, pair, i) {
-    return memo + '.' + pair[0] + '(' + pair[1] + ')';
-  }, '_.chain(data)') + '.value()');
+  try {
+    args = parseArgs(inputs.args, argv.v);
+  } catch(e) {
+    console.error(e.message);
+    return yargs.showHelp();
+  }
 
-  var result = _.reduce(pairs, function(chainObj, pair) {
-
-    var method = pair[0];
-    var arg = pair[1];
-    var parsedArg;
-
-    try {
-      parsedArg = evalWith(arg, lodashContext);
-    } catch(e) {
-      parsedArg = arg;
-    }
-
-    return chainObj[method](parsedArg);
-
-  }, _.chain(data)).value();
+  var result = evalUtils.chain(data, args, argv.v);
 
   argv.p ? jsome(result) : console.log(JSON.stringify(result));
 
 });
-
-function parseArgs(args) {
-  return _.reduce(args, function(memo, arg) {
-    if (_.head(arg) === '.') {
-      return memo.concat(['get', arg.slice(1)]);
-    }
-    if ((memo.length % 2 === 0)
-        && _[arg]
-        && _[arg].length === 1) {
-      return memo.concat([arg, undefined]);
-    }
-    return memo.concat(arg);
-  }, []);
-}
-
-function makePairs(args) {
-  return _.reduce(args, function(memo, arg) {
-    if (_.isNull(memo.method)) {
-      return _.assign({}, memo, {
-        method: arg
-      });
-    }
-    return _.assign({}, memo, {
-      pairs: memo.pairs.concat([[memo.method, arg]]),
-      method: null
-    });
-  }, {
-    method: null,
-    pairs: []
-  }).pairs;
-}
 
 function getInputs(argv, cb) {
   'use strict';
@@ -147,9 +92,4 @@ function getInputs(argv, cb) {
     cb(new Error(e));
   }
 
-}
-
-function evalWith(str, context) {
-  var script = new vm.Script(str);
-  return script.runInContext(context);
 }
