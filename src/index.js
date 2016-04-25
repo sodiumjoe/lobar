@@ -5,6 +5,7 @@ import yargs from 'yargs';
 import parseJson from './parseJson.js';
 import parseArgs from './parseArgs.js';
 import { evalChain } from './eval.js';
+import interactive from './interactive.js';
 
 const argv = yargs
   .env('LOBAR')
@@ -28,6 +29,9 @@ const argv = yargs
   .boolean('p')
   .alias('p', 'prettyPrint')
   .describe('p', 'pretty print output')
+  .boolean('i')
+  .alias('i', 'interactive')
+  .describe('i', 'interactive mode')
   .help('h')
   .alias('h', 'help')
   .argv;
@@ -44,6 +48,10 @@ getInputs(argv, (err, inputs) => {
     console.error('Error: invalid json input');
     console.error(e.stack);
     return yargs.showHelp();
+  }
+
+  if (argv.i) {
+    return interactive(data, inputs.args);
   }
 
   let args;
