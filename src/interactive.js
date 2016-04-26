@@ -1,4 +1,5 @@
 import {
+  chain,
   includes,
   isEmpty,
   matchesProperty,
@@ -46,7 +47,7 @@ export default function interactive(data, args) {
     return current;
   }).distinctUntilChanged().share();
 
-  const moves = keypresses.pluck('key').filter(key => includes(['h', 'l', '0', '$'], key)).map(key => ({ action: 'move', key }));
+  const moves = keypresses.pluck('key').filter(key => includes (['h', 'l', '0', '$', 'w', 'b', 'e'], key)).map(key => ({ action: 'move', key }));
   const [chars, controls] = keypresses.partition(property('data.isCharacter'));
   const deletes = controls.filter(matchesProperty('key', 'BACKSPACE')).map(() => ({ action: 'del' }));
   const inserts = chars.pluck('key').map(key => ({ action: 'insert', key })).merge(deletes);
@@ -69,8 +70,10 @@ export default function interactive(data, args) {
 
   const actions = { move, insert, del };
 
-  concat(initialInput, inputs).scan((acc, { action, key }) => {
-    const { pos, input } = actions[action](acc.pos, acc.input, key);
+  const inputBuffer = concat(initialInput, inputs)
+  .scan((acc, { action, key }) => actions[action](acc.pos, acc.input, key), { pos: 0, input: '' });
+
+  const output = inputBuffer.scan((acc, { pos, input }) => {
     let json;
     let valid;
     if (isEmpty(input)) {
@@ -86,8 +89,9 @@ export default function interactive(data, args) {
       valid = false;
     }
     return { pos, input, json, valid };
-  }, { pos: 0, input: '', json: initialJson, valid: true })
-  .subscribe(({ pos, input, json, valid }) => {
+  }, { pos: 0, input: '', json: initialJson, valid: true });
+
+  output.subscribe(({ pos, input, json, valid }) => {
     term.clear();
     if (valid) {
       term(`${input}\n`);
@@ -122,6 +126,43 @@ function move(pos, input, key) {
   }
   if (key === '$') {
     return { pos: input.length - 1, input };
+  }
+  if (key === 'w') {
+    const newPos = chain(input.slice(pos)).words().transform((acc, word) => {
+      acc.pos = acc.pos + word.length + 1;
+      return acc.pos < pos;
+    }, { pos }).value().pos;
+    return {
+      pos: Math.min(newPos, input.length - 1),
+      input
+    };
+  }
+  if (key === 'e') {
+    const newPos = chain(input.slice(pos)).words().transform((acc, word) => {
+      if (word.length === 1) {
+        acc.pos = acc.pos + 2;
+        return true;
+      }
+      acc.pos = acc.pos + word.length - 1;
+      return acc.pos < pos + 1;
+    }, { pos }).value().pos;
+    return {
+      pos: Math.min(newPos, input.length - 1),
+      input
+    };
+  }
+  if (key === 'b') {
+    const newPos = chain(input).words().transform((acc, word) => {
+      if (acc.pos + word.length + 2 > pos) {
+        return false;
+      }
+      acc.pos = acc.pos + word.length + 1;
+      return true;
+    }, { pos: 0 }).value().pos;
+    return {
+      pos: newPos,
+      input
+    };
   }
 }
 
