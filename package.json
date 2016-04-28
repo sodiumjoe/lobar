@@ -6,7 +6,8 @@
   "main": "index.js",
   "repository": "https://github.com/sodiumjoe/lobar.git",
   "scripts": {
-    "build": "babel src -d lib"
+    "build": "babel src -d lib",
+    "prepublish": "in-publish && npm run build || true"
   },
   "keywords": [
     "lodash",
@@ -24,6 +25,7 @@
   "preferGlobal": true,
   "license": "ISC",
   "dependencies": {
+    "in-publish": "^2.0.0",
     "jsome": "^2.3.24",
     "lodash": "^4.10.0",
     "lodash": "^4.11.1",
