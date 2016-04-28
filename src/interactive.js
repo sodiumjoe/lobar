@@ -2,8 +2,7 @@ import {
   chain,
   includes,
   isEmpty,
-  matchesProperty,
-  property
+  matchesProperty
 } from 'lodash';
 import { realTerminal as term } from 'terminal-kit';
 import { Observable } from 'rxjs';
@@ -12,6 +11,8 @@ import { evalChain } from './eval.js';
 
 const {
   concat,
+  create,
+  empty,
   fromEvent,
   of
 } = Observable;
@@ -28,49 +29,142 @@ export default function interactive(data, args) {
 
   const keypresses = fromEvent(term, 'key', (key, matches, data) => ({ key, matches, data })).share();
 
-  const mode = concat(of('insert'), keypresses).scan((current, { key }) => {
-    if (key === 'ESCAPE') {
-      return 'normal';
-    }
-    if (current === 'normal' && key === 'I') {
-      return 'insertLine';
-    }
-    if (current === 'normal' && key === 'A') {
-      return 'appendLine';
-    }
-    if (current === 'normal' && key === 'i') {
-      return 'insert';
-    }
-    if (current === 'normal' && key === 'a') {
-      return 'append';
-    }
-    return current;
-  }).distinctUntilChanged().share();
+  const insert = key => ({ action: 'insert', key });
+  const move = key => ({ action: 'move', key });
+  const del = () => ({ action: 'del' });
 
-  const moves = keypresses.pluck('key').filter(key => includes (['h', 'l', '0', '$', 'w', 'b', 'e'], key)).map(key => ({ action: 'move', key }));
-  const [chars, controls] = keypresses.partition(property('data.isCharacter'));
-  const deletes = controls.filter(matchesProperty('key', 'BACKSPACE')).map(() => ({ action: 'del' }));
-  const inserts = chars.pluck('key').map(key => ({ action: 'insert', key })).merge(deletes);
+  const actions = {
+    move(pos, input, key) {
+      if (key === 'ESCAPE') {
+        return { pos: Math.min(pos, input.length - 1), input };
+      }
+      if (key === 'append') {
+        return { pos: pos + 1, input };
+      }
+      if (includes(['h', 'LEFT'], key)) {
+        return { pos: Math.max(pos - 1, 0), input };
+      }
+      if (includes(['l', 'RIGHT'], key)) {
+        return { pos: Math.min(pos + 1, input.length - 1), input };
+      }
+      if (key === '0') {
+        return { pos: 0, input };
+      }
+      if (key === '$') {
+        return { pos: input.length - 1, input };
+      }
+      if (includes(['w', 'CTRL_RIGHT'], key)) {
+        const newPos = chain(input.slice(pos)).words().transform((acc, word) => {
+          acc.pos = acc.pos + word.length + 1;
+          return acc.pos < pos;
+        }, { pos }).value().pos + chain(input.slice(pos)).trim().size() - chain(input.slice(pos)).words().join(' ').size();
+        return {
+          pos: Math.min(newPos, input.length - 1),
+          input
+        };
+      }
+      if (key === 'e') {
+        const newPos = chain(input.slice(pos)).words().transform((acc, word) => {
+          if (word.length === 1) {
+            acc.pos = acc.pos + 2;
+            return true;
+          }
+          acc.pos = acc.pos + word.length - 1;
+          return acc.pos < pos + 1;
+        }, { pos }).value().pos + chain(input.slice(pos)).trim().size() - chain(input.slice(pos)).words().join(' ').size();
+        return {
+          pos: Math.min(newPos, input.length - 1),
+          input
+        };
+      }
+      if (includes(['b', 'CTRL_LEFT'], key)) {
+        const leftPad = chain(input).trim().size() - chain(input).words().join(' ').size();
+        if (pos <= leftPad) {
+          return { pos: 0, input };
+        }
+        const newPos = chain(input).words().transform((acc, word) => {
+          if (acc.pos + word.length + 2 > pos) {
+            return false;
+          }
+          acc.pos = acc.pos + word.length + 1;
+          return true;
+        }, { pos: leftPad }).value().pos;
+        return {
+          pos: newPos,
+          input
+        };
+      }
+    },
 
-  const inputs = mode.switchMap(mode => {
-    if (mode === 'insert') {
-      return inserts;
+    insert(pos, input, key) {
+      if (pos === 0) {
+        return { pos: key.length, input: key + input };
+      }
+      return {
+        pos: pos + key.length,
+        input: input.slice(0, pos) + key + input.slice(pos)
+      };
+    },
+
+    del(pos, input) {
+      if (pos === 0) {
+        return { pos, input };
+      }
+      return { pos: pos - 1, input: input.slice(0, pos - 1) + input.slice(pos) };
     }
-    if (mode === 'append') {
-      return concat(of({ action: 'move', key: 'append' }), inserts);
-    }
-    if (mode === 'insertLine') {
-      return concat(of({ action: 'move', key: '0' }), inserts);
-    }
-    if (mode === 'appendLine') {
-      return concat(of({ action: 'move', key: '$' }), of({ action: 'move', key: 'append' }), inserts);
-    }
-    return concat(of({ action: 'move', key: 'h' }), moves);
+  };
+
+  const getInserts = () => create(obs => {
+    keypresses.subscribe(({ key, data: { isCharacter } }) => {
+      if (key === 'ESCAPE') {
+        obs.next(move(key));
+        return obs.complete();
+      }
+      if (key === 'BACKSPACE') {
+        return obs.next(del());
+      }
+      if (includes(['RIGHT', 'LEFT', 'CTRL_LEFT', 'CTRL_RIGHT'], key)) {
+        return obs.next(move(key));
+      }
+      if (isCharacter) {
+        return obs.next(insert(key));
+      }
+    });
   });
 
-  const actions = { move, insert, del };
+  const switchConcat = (input, switchFn, onError, onComplete) => create(obs => {
+    const init = () => {
+      input.take(1).subscribe(e => {
+        switchFn(e).subscribe(e => obs.next(e), onError, () => init());
+      }, onError, onComplete);
+    };
+    init();
+  });
 
-  const inputBuffer = concat(initialInput, inputs)
+  const commands = getInserts().concat(switchConcat(keypresses, ({ key }) => {
+    if (key === 'x') {
+      return of(move('append'), del(), move('ESCAPE'));
+    }
+    if (key === 'i') {
+      return getInserts();
+    }
+    if (includes(['h', 'l', 'RIGHT', 'LEFT', 'b', 'w', 'e', '0', '$'], key)) {
+      return of(move(key));
+    }
+    if (key === 'a') {
+      return of(move('append')).concat(getInserts());
+    }
+    if (key === 'A') {
+      return of(move('$'), move('append')).concat(getInserts());
+    }
+    if (key === 'I') {
+      return of(move('0')).concat(getInserts());
+    }
+
+    return empty();
+  }));
+
+  const inputBuffer = concat(initialInput, commands)
   .scan((acc, { action, key }) => actions[action](acc.pos, acc.input, key), { pos: 0, input: '' });
 
   const output = inputBuffer.scan((acc, { pos, input }) => {
@@ -109,76 +203,4 @@ export default function interactive(data, args) {
 function getVisible(str) {
   const lines = str.split('\n');
   return lines.slice(0, term.height - 3).join('\n');
-}
-
-function move(pos, input, key) {
-  if (key === 'append') {
-    return { pos: pos + 1, input };
-  }
-  if (key === 'h') {
-    return { pos: Math.max(pos - 1, 0), input };
-  }
-  if (key === 'l') {
-    return { pos: Math.min(pos + 1, input.length - 1), input };
-  }
-  if (key === '0') {
-    return { pos: 0, input };
-  }
-  if (key === '$') {
-    return { pos: input.length - 1, input };
-  }
-  if (key === 'w') {
-    const newPos = chain(input.slice(pos)).words().transform((acc, word) => {
-      acc.pos = acc.pos + word.length + 1;
-      return acc.pos < pos;
-    }, { pos }).value().pos;
-    return {
-      pos: Math.min(newPos, input.length - 1),
-      input
-    };
-  }
-  if (key === 'e') {
-    const newPos = chain(input.slice(pos)).words().transform((acc, word) => {
-      if (word.length === 1) {
-        acc.pos = acc.pos + 2;
-        return true;
-      }
-      acc.pos = acc.pos + word.length - 1;
-      return acc.pos < pos + 1;
-    }, { pos }).value().pos;
-    return {
-      pos: Math.min(newPos, input.length - 1),
-      input
-    };
-  }
-  if (key === 'b') {
-    const newPos = chain(input).words().transform((acc, word) => {
-      if (acc.pos + word.length + 2 > pos) {
-        return false;
-      }
-      acc.pos = acc.pos + word.length + 1;
-      return true;
-    }, { pos: 0 }).value().pos;
-    return {
-      pos: newPos,
-      input
-    };
-  }
-}
-
-function insert(pos, input, key) {
-  if (pos === 0) {
-    return { pos: key.length, input: key + input };
-  }
-  return {
-    pos: pos + key.length,
-    input: input.slice(0, pos) + key + input.slice(pos)
-  };
-}
-
-function del(pos, input) {
-  if (pos === 0) {
-    return { pos, input };
-  }
-  return { pos: pos - 1, input: input.slice(0, pos - 1) + input.slice(pos) };
 }
