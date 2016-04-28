@@ -1,6 +1,6 @@
 {
   "name": "lobar",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "description": "A thin shell wrapper for lodash.chain()",
   "author": "joe moon <joe@xoxomoon.com>",
   "main": "index.js",
@@ -27,7 +27,6 @@
   "dependencies": {
     "in-publish": "^2.0.0",
     "jsome": "^2.3.24",
-    "lodash": "^4.10.0",
     "lodash": "^4.11.1",
     "rxjs": "^5.0.0-beta.6",
     "terminal-kit": "^0.24.1",
