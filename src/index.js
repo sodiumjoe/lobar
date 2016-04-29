@@ -5,7 +5,7 @@ import yargs from 'yargs';
 import parseJson from './parseJson.js';
 import parseArgs from './parseArgs.js';
 import { evalChain } from './eval.js';
-import interactive from './interactive.js';
+import interactive from './interactive';
 
 const argv = yargs
   .env('LOBAR')

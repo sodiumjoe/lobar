@@ -91,4 +91,12 @@ generally enough for what I want to do at the command line.
 * interactive mode
   - commands:
     - d
-    - c
+      - daw
+      - df
+    - r
+    - R
+    - u
+  - scroll output
+  - prettyPrint
+  - on enter, print to stdout
+  - detect output mode
