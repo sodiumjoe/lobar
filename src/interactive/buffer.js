@@ -70,7 +70,7 @@ export default function buffer(args, keypresses) {
         if (key === 'ESCAPE' || !isCharacter) {
           return of(move(key));
         }
-        return of(del('til', key), del('l'));
+        return of(del('for', key));
       });
     }
     if (key === 'T') {
@@ -86,7 +86,7 @@ export default function buffer(args, keypresses) {
         if (key === 'ESCAPE' || !isCharacter) {
           return of(move(key));
         }
-        return of(del('Til', key), del('h'));
+        return of(del('For', key));
       });
     }
     return empty();
@@ -137,6 +137,38 @@ export default function buffer(args, keypresses) {
     }
     if (key === 'r') {
       return getReplacement();
+    }
+    if (key === 't') {
+      return switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
+        if (key === 'ESCAPE' || !isCharacter) {
+          return of(move(key));
+        }
+        return of(move('til', key));
+      });
+    }
+    if (key === 'T') {
+      return switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
+        if (key === 'ESCAPE' || !isCharacter) {
+          return of(move(key));
+        }
+        return of(move('Til', key));
+      });
+    }
+    if (key === 'f') {
+      return switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
+        if (key === 'ESCAPE' || !isCharacter) {
+          return of(move(key));
+        }
+        return of(move('for', key));
+      });
+    }
+    if (key === 'F') {
+      return switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
+        if (key === 'ESCAPE' || !isCharacter) {
+          return of(move(key));
+        }
+        return of(move('For', key));
+      });
     }
 
     return empty();

@@ -1,6 +1,5 @@
 import {
   chain,
-  findLastIndex,
   includes
 } from 'lodash';
 
@@ -39,7 +38,43 @@ const endWordPos = (pos, input) => {
   }, { pos }).value().pos + chain(input.slice(pos)).size() - chain(input.slice(pos)).words().join(' ').size();
 };
 
-export function move(pos, input, key) {
+const tilChar = (pos, input, ch) => {
+  const begin = input.slice(pos + 1).indexOf(ch);
+  return begin < 0 ? null : begin + pos;
+};
+
+const tilCharBack = (pos, input, ch) => {
+  const end = input.slice(0, pos).lastIndexOf(ch) + 1;
+  return end < 0 ? null : end;
+};
+
+export function move(pos, input, key, meta) {
+  if (key === 'for') {
+    const begin = tilChar(pos, input, meta);
+    return {
+      pos: begin ? begin + 1 : pos,
+      input
+    };
+  }
+  if (key === 'For') {
+    const end = tilCharBack(pos, input, meta);
+    return {
+      pos: end ? end - 1 : pos,
+      input
+    };
+  }
+  if (key === 'til') {
+    return {
+      pos: tilChar(pos, input, meta) || pos,
+      input
+    };
+  }
+  if (key === 'Til') {
+    return {
+      pos: tilCharBack(pos, input, meta) || pos,
+      input
+    };
+  }
   if (key === 'ESCAPE') {
     return { pos: Math.min(pos, input.length - 1), input };
   }
@@ -76,6 +111,8 @@ export function move(pos, input, key) {
       input
     };
   }
+
+  return { pos, input };
 }
 
 export function insert(pos, input, key) {
@@ -90,24 +127,38 @@ export function insert(pos, input, key) {
 
 export function del(pos, input, key, meta) {
   if (key === 'til') {
-    const end = input.slice(pos + 1).indexOf(meta);
-    if (end < 0) {
-      return { pos, input };
-    }
+    const end = tilChar(pos, input, meta);
     return {
       pos,
-      input: input.slice(0, pos) + input.slice(pos + end + 1)
+      input: end ? input.slice(0, pos) + input.slice(pos + end + 1) : input
     };
   }
   if (key === 'Til') {
-    const begin = input.slice(0, pos).lastIndexOf(meta) + 1;
-    if (begin < 0) {
-      return { pos, input };
+    const begin = tilCharBack(pos, input, meta);
+    if (begin) {
+      return {
+        pos: begin,
+        input: input.slice(0, begin) + input.slice(pos)
+      };
     }
+    return { pos, input };
+  }
+  if (key === 'for') {
+    const end = tilChar(pos, input, meta);
     return {
-      pos: begin,
-      input: input.slice(0, begin) + input.slice(pos)
+      pos,
+      input: end ? input.slice(0, pos) + input.slice(pos + end + 2) : input
     };
+  }
+  if (key === 'For') {
+    const begin = tilCharBack(pos, input, meta);
+    if (begin) {
+      return {
+        pos: begin - 1,
+        input: input.slice(0, begin - 1) + input.slice(pos)
+      };
+    }
+    return { pos, input };
   }
   if (key === 'word') {
     if(input[pos] === ' ') {

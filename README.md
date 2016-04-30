@@ -90,8 +90,6 @@ generally enough for what I want to do at the command line.
 
 * interactive mode
   - commands:
-    - t,T
-    - f,F
     - c,d
       - -aw
     - R
