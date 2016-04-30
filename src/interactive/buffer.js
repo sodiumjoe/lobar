@@ -178,8 +178,16 @@ export default function buffer(data, args, height, width, keypresses) {
         return of(move('For', key));
       });
     }
-    if (includes(['j', 'k', 'CTRL_D', 'CTRL_U'], key)) {
+    if (includes(['G', 'j', 'k', 'CTRL_D', 'CTRL_U'], key)) {
       return of(scroll(key));
+    }
+    if (key === 'g') {
+      return switchMapOnce(keypresses, ({ key }) => {
+        if (key === 'g') {
+          return of(scroll(key));
+        }
+        return empty();
+      });
     }
 
     return empty();
@@ -244,6 +252,12 @@ const scrollAction = (scroll = 0, key, json, height) => {
   }
   if (key === 'CTRL_U') {
     return Math.max(0, scroll - height);
+  }
+  if (key === 'G') {
+    return max;
+  }
+  if (key === 'g') {
+    return 0;
   }
   return scroll;
 };
