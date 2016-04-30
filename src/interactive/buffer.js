@@ -73,6 +73,22 @@ export default function buffer(args, keypresses) {
         return of(del('til', key), del('l'));
       });
     }
+    if (key === 'T') {
+      return switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
+        if (key === 'ESCAPE' || !isCharacter) {
+          return of(move(key));
+        }
+        return of(del('Til', key));
+      });
+    }
+    if (key === 'F') {
+      return switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
+        if (key === 'ESCAPE' || !isCharacter) {
+          return of(move(key));
+        }
+        return of(del('Til', key), del('h'));
+      });
+    }
     return empty();
   });
 

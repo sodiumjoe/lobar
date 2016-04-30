@@ -1,5 +1,6 @@
 import {
   chain,
+  findLastIndex,
   includes
 } from 'lodash';
 
@@ -96,6 +97,16 @@ export function del(pos, input, key, meta) {
     return {
       pos,
       input: input.slice(0, pos) + input.slice(pos + end + 1)
+    };
+  }
+  if (key === 'Til') {
+    const begin = input.slice(0, pos).lastIndexOf(meta) + 1;
+    if (begin < 0) {
+      return { pos, input };
+    }
+    return {
+      pos: begin,
+      input: input.slice(0, begin) + input.slice(pos)
     };
   }
   if (key === 'word') {

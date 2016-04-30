@@ -90,8 +90,10 @@ generally enough for what I want to do at the command line.
 
 * interactive mode
   - commands:
-    - d
-      - daw
+    - t,T
+    - f,F
+    - c,d
+      - -aw
     - R
     - u
   - scroll output
