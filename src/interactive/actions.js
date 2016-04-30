@@ -48,7 +48,7 @@ const tilCharBack = (pos, input, ch) => {
   return end < 0 ? null : end;
 };
 
-export function move(pos, input, key, meta) {
+export function move({ pos, input, key, meta }) {
   if (key === 'for') {
     const begin = tilChar(pos, input, meta);
     return {
@@ -115,7 +115,7 @@ export function move(pos, input, key, meta) {
   return { pos, input };
 }
 
-export function insert(pos, input, key) {
+export function insert({ pos, input, key }) {
   if (pos === 0) {
     return { pos: key.length, input: key + input };
   }
@@ -125,7 +125,7 @@ export function insert(pos, input, key) {
   };
 }
 
-export function del(pos, input, key, meta) {
+export function del({ pos, input, key, meta }) {
   if (key === 'til') {
     const end = tilChar(pos, input, meta);
     return {

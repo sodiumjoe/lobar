@@ -1,8 +1,13 @@
 import {
-  includes
+  assign,
+  chain,
+  includes,
+  isEmpty
 } from 'lodash';
 import { Observable } from 'rxjs';
 import * as actions from './actions.js';
+import parseArgs from '../parseArgs.js';
+import { evalChain } from '../eval.js';
 
 const {
   create,
@@ -11,12 +16,15 @@ const {
   of
 } = Observable;
 
-export default function buffer(args, keypresses) {
+export default function buffer(data, args, height, width, keypresses) {
+
+  const initialJson = stringify(data, width);
 
   const initialInput = of(args.join(' ')).map(input => ({ action: 'insert', key: input }));
 
   const insert = key => ({ action: 'insert', key });
   const move = (key, meta) => ({ action: 'move', key, meta });
+  const scroll = key => ({ action: 'scroll', key });
   const del = (key, meta) => ({ action: 'del', key, meta });
 
   const getInserts = () => create(obs => {
@@ -170,12 +178,45 @@ export default function buffer(args, keypresses) {
         return of(move('For', key));
       });
     }
+    if (includes(['j', 'k', 'CTRL_D', 'CTRL_U'], key)) {
+      return of(scroll(key));
+    }
 
     return empty();
   }));
 
   return concat(initialInput, commands)
-  .scan((acc, { action, key, meta }) => actions[action](acc.pos, acc.input, key, meta), { pos: 0, input: '' });
+  .scan((acc, command) => {
+    const { action, key } = command;
+    if (action === 'scroll') {
+      return assign({}, acc, { scroll: scrollAction(acc.scroll, key, acc.json, height) });
+    }
+
+    const {
+      pos,
+      input
+    } = actions[action](assign({}, acc, command));
+
+    let result;
+
+    if (isEmpty(input)) {
+      result = data;
+    } else {
+      try {
+        const args = parseArgs(input.split(' '));
+        result = evalChain(data, args);
+      } catch(e) {/* */}
+    }
+
+    const json = result ? stringify(result, width) : acc.json;
+    return { pos, input, json, valid: !!result, scroll: 0 };
+  }, {
+    pos: 0,
+    input: '',
+    scroll: 0,
+    json: initialJson,
+    valid: false
+  });
 
 }
 
@@ -189,3 +230,25 @@ const switchConcat = (input, switchFn, onError, onComplete) => create(obs => {
   };
   init();
 });
+
+const scrollAction = (scroll = 0, key, json, height) => {
+  const max = json.split('\n').length - height;
+  if (key === 'j') {
+    return Math.min(max, scroll + 1);
+  }
+  if (key === 'k') {
+    return Math.max(0, scroll - 1);
+  }
+  if (key === 'CTRL_D') {
+    return Math.min(max, scroll + height);
+  }
+  if (key === 'CTRL_U') {
+    return Math.max(0, scroll - height);
+  }
+  return scroll;
+};
+
+const stringify = (json, n) => {
+  const re = new RegExp(`.{1,${n}}`, 'g');
+  return chain(JSON.stringify(json, null, 2).split('\n')).map(line => line.match(re)).flatten().join('\n').value();
+};

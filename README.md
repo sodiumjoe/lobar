@@ -94,7 +94,8 @@ generally enough for what I want to do at the command line.
       - -aw
     - R
     - u
-  - scroll output
+    - G
+    - gg
   - prettyPrint
   - on enter, print to stdout
   - detect output mode
