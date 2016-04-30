@@ -92,8 +92,6 @@ generally enough for what I want to do at the command line.
   - commands:
     - d
       - daw
-      - df
-    - r
     - R
     - u
   - scroll output

@@ -65,7 +65,22 @@ export default function buffer(args, keypresses) {
         return of(del('til', key));
       });
     }
+    if (key === 'f') {
+      return switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
+        if (key === 'ESCAPE' || !isCharacter) {
+          return of(move(key));
+        }
+        return of(del('til', key), del('l'));
+      });
+    }
     return empty();
+  });
+
+  const getReplacement = () => switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
+    if (!isCharacter) {
+      return empty();
+    }
+    return of(move('append'), del(), insert(key), move('ESCAPE'));
   });
 
   const commands = getInserts().concat(switchConcat(keypresses, ({ key }) => {
@@ -103,6 +118,9 @@ export default function buffer(args, keypresses) {
         obs.error,
         () => getInserts().subscribe(obs)
       ));
+    }
+    if (key === 'r') {
+      return getReplacement();
     }
 
     return empty();
