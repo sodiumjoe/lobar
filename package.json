@@ -1,6 +1,6 @@
 {
   "name": "lobar",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "A thin shell wrapper for lodash.chain()",
   "author": "joe moon <joe@xoxomoon.com>",
   "main": "index.js",
@@ -9,7 +9,9 @@
     "build": "babel src -d lib",
     "prepublish": "in-publish && npm run build || true"
   },
-  "files": ["lib"],
+  "files": [
+    "lib"
+  ],
   "keywords": [
     "lodash",
     "shell",
