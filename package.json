@@ -9,6 +9,7 @@
     "build": "babel src -d lib",
     "prepublish": "in-publish && npm run build || true"
   },
+  "files": ["lib"],
   "keywords": [
     "lodash",
     "shell",
