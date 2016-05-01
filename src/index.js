@@ -51,7 +51,10 @@ getInputs(argv, (err, inputs) => {
   }
 
   if (argv.i) {
-    return interactive(data, inputs.args);
+    return interactive(data, inputs.args, result => {
+      argv.p ? jsome(result) : console.log(JSON.stringify(result));
+      process.exit(0);
+    });
   }
 
   let args;

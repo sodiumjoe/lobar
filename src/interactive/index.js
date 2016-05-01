@@ -3,11 +3,11 @@ import {
 } from 'lodash';
 import { realTerminal as term } from 'terminal-kit';
 import { Observable } from 'rxjs';
-import buffer from './buffer.js';
+import buffer, { stringify } from './buffer.js';
 
 const { fromEvent } = Observable;
 
-export default function interactive(data, args) {
+export default function interactive(data, args, cb) {
 
   term.fullscreen();
   term.grabInput(true);
@@ -15,14 +15,17 @@ export default function interactive(data, args) {
   const keypresses = fromEvent(term, 'key', (key, matches, data) => ({ key, matches, data })).share();
 
   buffer(data, args, term.height - 1, term.width, keypresses)
-  .subscribe(({ pos, input, json, scroll, valid }) => {
+  .subscribe(({ pos, input, json, scroll, valid, key }) => {
     term.clear();
+    if (key === 'ENTER') {
+      return cb(json);
+    }
     if (valid) {
       term(`${input}\n`);
     } else {
       term.red(`${input}\n`);
     }
-    term(getVisible(json, scroll));
+    term(getVisible(stringify(json, term.width), scroll));
     term.moveTo(pos + 1, 1);
   });
 

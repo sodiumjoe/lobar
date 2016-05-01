@@ -18,8 +18,6 @@ const {
 
 export default function buffer(data, args, height, width, keypresses) {
 
-  const initialJson = stringify(data, width);
-
   const initialInput = of(args.join(' ')).map(input => ({ action: 'insert', key: input }));
 
   const insert = key => ({ action: 'insert', key });
@@ -29,6 +27,10 @@ export default function buffer(data, args, height, width, keypresses) {
 
   const getInserts = () => create(obs => {
     keypresses.subscribe(({ key, data: { isCharacter } }) => {
+      if (key === 'ENTER') {
+        obs.next({ action: 'enter', key });
+        return obs.complete();
+      }
       if (key === 'ESCAPE') {
         obs.next(move(key));
         return obs.complete();
@@ -189,6 +191,9 @@ export default function buffer(data, args, height, width, keypresses) {
         return empty();
       });
     }
+    if (key === 'ENTER') {
+      return of({ action: 'enter', key });
+    }
 
     return empty();
   }));
@@ -197,7 +202,10 @@ export default function buffer(data, args, height, width, keypresses) {
   .scan((acc, command) => {
     const { action, key } = command;
     if (action === 'scroll') {
-      return assign({}, acc, { scroll: scrollAction(acc.scroll, key, acc.json, height) });
+      return assign({}, acc, { scroll: scrollAction(acc.scroll, key, acc.json, height, width) });
+    }
+    if (action === 'enter') {
+      return assign({}, acc, { key });
     }
 
     const {
@@ -216,14 +224,21 @@ export default function buffer(data, args, height, width, keypresses) {
       } catch(e) {/* */}
     }
 
-    const json = result ? stringify(result, width) : acc.json;
-    return { pos, input, json, valid: !!result, scroll: 0 };
+    return {
+      pos,
+      input,
+      json: result || acc.json,
+      valid: !!result,
+      scroll: 0,
+      key
+    };
   }, {
     pos: 0,
     input: '',
     scroll: 0,
-    json: initialJson,
-    valid: false
+    json: data,
+    valid: false,
+    key: null
   });
 
 }
@@ -239,8 +254,8 @@ const switchConcat = (input, switchFn, onError, onComplete) => create(obs => {
   init();
 });
 
-const scrollAction = (scroll = 0, key, json, height) => {
-  const max = json.split('\n').length - height;
+const scrollAction = (scroll = 0, key, json, height, width) => {
+  const max = stringify(json, width).split('\n').length - height;
   if (key === 'j') {
     return Math.min(max, scroll + 1);
   }
@@ -262,7 +277,7 @@ const scrollAction = (scroll = 0, key, json, height) => {
   return scroll;
 };
 
-const stringify = (json, n) => {
-  const re = new RegExp(`.{1,${n}}`, 'g');
+export const stringify = (json, width) => {
+  const re = new RegExp(`.{1,${width}}`, 'g');
   return chain(JSON.stringify(json, null, 2).split('\n')).map(line => line.match(re)).flatten().join('\n').value();
 };
