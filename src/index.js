@@ -1,5 +1,6 @@
 #! /usr/bin/env node
 
+import { readFile } from 'fs';
 import jsome from 'jsome';
 import yargs from 'yargs';
 import parseJson from './parseJson.js';
@@ -21,6 +22,12 @@ const argv = yargs
     describe: '<required> input json',
     type: 'string'
   })
+  .option('f', {
+    alias: 'filename',
+    describe: '<required> input json file',
+    type: 'string'
+  })
+  .normalize()
   .boolean('l')
   .alias('l', 'loose')
   .count('v')
@@ -79,14 +86,17 @@ function getInputs(argv, cb) {
 
     let jsonString = '';
 
-    if (process.stdin.isTTY && !argv.d) {
+    if (process.stdin.isTTY && !argv.d && !argv.f) {
       yargs.showHelp();
-      console.error('Missing required argument: d');
+      console.error('Missing required argument: d or f');
       return process.exit();
     }
 
     if (process.stdin.isTTY) {
-      return cb(null, { jsonString: argv.d, args: argv._ });
+      if (argv.d) {
+        return cb(null, { jsonString: argv.d, args: argv._ });
+      }
+      return readFile(argv.f, 'utf8', (err, data) => err ? cb(new Error(err)) : cb(null, { jsonString: data, args: argv._ }));
     }
 
     process.stdin.on('data', chunk => jsonString += chunk);
