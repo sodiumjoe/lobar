@@ -1,7 +1,7 @@
 #! /usr/bin/env node
 
 import { readFile } from 'fs';
-import jsome from 'jsome';
+import stringify from 'maquillage';
 import yargs from 'yargs';
 import parseJson from './parseJson.js';
 import parseArgs from './parseArgs.js';
@@ -59,7 +59,7 @@ getInputs(argv, (err, inputs) => {
 
   if (argv.i) {
     return interactive(data, inputs.args, result => {
-      argv.p ? jsome(result) : console.log(JSON.stringify(result));
+      console.log(stringify(result, { colors: argv.p ? undefined : false }));
       process.exit(0);
     });
   }
@@ -75,7 +75,7 @@ getInputs(argv, (err, inputs) => {
 
   const result = evalChain(data, args, argv.v);
 
-  argv.p ? jsome(result) : console.log(JSON.stringify(result));
+  console.log(stringify(result, { colors: argv.p ? undefined : false }));
   process.exit(0);
 
 });

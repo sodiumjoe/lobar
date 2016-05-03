@@ -8,6 +8,7 @@ import { Observable } from 'rxjs';
 import * as actions from './actions.js';
 import parseArgs from '../parseArgs.js';
 import { evalChain } from '../eval.js';
+import sfy from 'maquillage';
 
 const {
   create,
@@ -279,5 +280,5 @@ const scrollAction = (scroll = 0, key, json, height, width) => {
 
 export const stringify = (json, width) => {
   const re = new RegExp(`.{1,${width}}`, 'g');
-  return chain(JSON.stringify(json, null, 2).split('\n')).map(line => line.match(re)).flatten().join('\n').value();
+  return chain(sfy(json).split('\n')).map(line => line.match(re)).flatten().join('\n').value();
 };
