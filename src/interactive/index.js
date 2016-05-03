@@ -1,5 +1,6 @@
 import {
-  matchesProperty
+  matchesProperty,
+  replace
 } from 'lodash';
 import { realTerminal as term } from 'terminal-kit';
 import { Observable } from 'rxjs';
@@ -21,11 +22,11 @@ export default function interactive(data, args, cb) {
       return cb(json);
     }
     if (valid) {
-      term(`${input}\n`);
+      term.noFormat(`${replace(input, '^', '^^')}\n`);
     } else {
-      term.red(`${input}\n`);
+      term.red.noFormat(`${replace(input, '^', '^^')}\n`);
     }
-    term(getVisible(stringify(json, term.width), scroll));
+    term.noFormat(replace(getVisible(stringify(json, term.width), scroll)), '^', '^^');
     term.moveTo(pos + 1, 1);
   });
 
