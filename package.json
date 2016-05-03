@@ -6,7 +6,8 @@
   "main": "index.js",
   "repository": "https://github.com/sodiumjoe/lobar.git",
   "scripts": {
-    "build": "babel src -d lib",
+    "clean": "/bin/rm -rf ./lib",
+    "build": "npm run clean && babel src -d lib",
     "prepublish": "in-publish && npm run build || true"
   },
   "files": [
