@@ -54,6 +54,14 @@ $ echo '{"foo": {"bar": "baz"}}' | lbr get foo.bar
 > "baz"
 ```
 
+### interactive mode
+
+```shell
+$ cat package.json | lbr -i
+```
+
+![interactive mode gif](https://raw.githubusercontent.com/sodiumjoe/lobar/master/lobar.gif)
+
 ### caveats
 
 If you want to use a string argument for a method that collides with a lodash
