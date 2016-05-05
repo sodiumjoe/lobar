@@ -1,42 +1,50 @@
 import {
   chain,
+  clamp,
   includes
 } from 'lodash';
 
-const beginWordPos = (pos, input) => {
-  if (pos === 0) {
-    return { pos, input };
+const beginWordPos = (pos, input) => pos === 0 ? pos : chain(input)
+.transform((acc, char, i) => {
+  if (i >= pos) {
+    return false;
   }
-  const leftPad = chain(input).size() - chain(input).words().join(' ').size();
-  if (pos <= leftPad) {
-    return { pos: 0, input };
+  acc.pos = acc.previous === ' ' ? i : acc.pos;
+  acc.previous = char;
+  return true;
+}, { pos: 0 })
+.get('pos')
+.toNumber()
+.clamp(0, input.length)
+.value();
+
+const nextWordPos = (pos, input) => chain(input.slice(pos))
+.transform((acc, char) => {
+  if (acc.previous === ' ') {
+    return false;
   }
-  return chain(input).words().transform((acc, word) => {
-    if (acc.pos + word.length + 2 > pos) {
-      return false;
-    }
-    acc.pos = acc.pos + word.length + 1;
-    return true;
-  }, { pos: leftPad }).value().pos;
-};
+  acc.pos += 1;
+  acc.previous = char;
+  return true;
+}, { pos: 0 })
+.get('pos')
+.toNumber()
+.add(pos)
+.clamp(0, input.length - 1)
+.value();
 
-const nextWordPos = (pos, input) => {
-  return chain(input.slice(pos)).words().transform((acc, word) => {
-    acc.pos = acc.pos + word.length + 1;
-    return acc.pos < pos;
-  }, { pos }).value().pos + chain(input.slice(pos)).trim().size() - chain(input.slice(pos)).words().join(' ').size();
-};
-
-const endWordPos = (pos, input) => {
-  return chain(input.slice(pos)).words().transform((acc, word) => {
-    if (word.length === 1) {
-      acc.pos = acc.pos + 2;
-      return true;
-    }
-    acc.pos = acc.pos + word.length - 1;
-    return acc.pos < pos + 1;
-  }, { pos }).value().pos + chain(input.slice(pos)).size() - chain(input.slice(pos)).words().join(' ').size();
-};
+const endWordPos = (pos, input) => chain(input.slice(pos + 1))
+.transform((acc, char, i) => {
+  if (char === ' ' && i != 0) {
+    return false;
+  }
+  acc.pos += 1;
+  return true;
+}, { pos })
+.get('pos')
+.toNumber()
+.clamp(0, input.length)
+.value();
 
 const tilChar = (pos, input, ch) => {
   const begin = input.slice(pos + 1).indexOf(ch);
@@ -76,7 +84,7 @@ export function move({ pos, input, key, meta }) {
     };
   }
   if (key === 'ESCAPE') {
-    return { pos: Math.min(pos, input.length - 1), input };
+    return { pos: clamp(pos, 0, input.length - 1), input };
   }
   if (key === 'append') {
     return { pos: pos + 1, input };
@@ -85,7 +93,7 @@ export function move({ pos, input, key, meta }) {
     return { pos: Math.max(pos - 1, 0), input };
   }
   if (includes(['l', 'RIGHT'], key)) {
-    return { pos: Math.min(pos + 1, input.length - 1), input };
+    return { pos: clamp(pos + 1, 0, input.length - 1), input };
   }
   if (key === '0') {
     return { pos: 0, input };
@@ -95,19 +103,19 @@ export function move({ pos, input, key, meta }) {
   }
   if (includes(['w', 'CTRL_RIGHT'], key)) {
     return {
-      pos: Math.min(nextWordPos(pos, input), input.length - 1),
+      pos: nextWordPos(pos, input),
       input
     };
   }
   if (key === 'e') {
     return {
-      pos: Math.min(endWordPos(pos, input), input.length - 1),
+      pos: endWordPos(pos, input),
       input
     };
   }
   if (includes(['b', 'CTRL_LEFT'], key)) {
     return {
-      pos: Math.max(beginWordPos(pos, input), 0),
+      pos: beginWordPos(pos, input),
       input
     };
   }
@@ -194,7 +202,7 @@ export function del({ pos, input, key, meta }) {
   if (key === 'b') {
     const begin = beginWordPos(pos, input);
     return {
-      pos: Math.max(begin, 0),
+      pos: begin,
       input: input.slice(0, begin) + input.slice(pos)
     };
   }
