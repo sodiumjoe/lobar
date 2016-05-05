@@ -285,4 +285,4 @@ export const stringify = (json, width) => {
   return chain(sfy(json).split('\n')).map(line => line.match(re)).flatten().join('\n').value();
 };
 
-const parsePreserveQuotes = args => map(args, arg => arg.match(/[^A-Za-z]/) ? `"${arg}"` : arg);
+const parsePreserveQuotes = args => map(args, arg => arg.match(actions.delimiterRegex) ? `"${arg}"` : arg);

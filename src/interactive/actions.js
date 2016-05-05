@@ -4,12 +4,14 @@ import {
   includes
 } from 'lodash';
 
+export const delimiterRegex = /[^A-Za-z]/;
+
 const beginWordPos = (pos, input) => pos === 0 ? pos : chain(input)
 .transform((acc, char, i) => {
   if (i >= pos) {
     return false;
   }
-  acc.pos = acc.previous === ' ' ? i : acc.pos;
+  acc.pos = acc.previous && acc.previous.match(delimiterRegex) ? i : acc.pos;
   acc.previous = char;
   return true;
 }, { pos: 0 })
@@ -20,7 +22,7 @@ const beginWordPos = (pos, input) => pos === 0 ? pos : chain(input)
 
 const nextWordPos = (pos, input) => chain(input.slice(pos))
 .transform((acc, char) => {
-  if (acc.previous === ' ') {
+  if (acc.previous && acc.previous.match(delimiterRegex)) {
     return false;
   }
   acc.pos += 1;
@@ -35,7 +37,7 @@ const nextWordPos = (pos, input) => chain(input.slice(pos))
 
 const endWordPos = (pos, input) => chain(input.slice(pos + 1))
 .transform((acc, char, i) => {
-  if (char === ' ' && i != 0) {
+  if (char.match(delimiterRegex) && i != 0) {
     return false;
   }
   acc.pos += 1;
@@ -169,7 +171,7 @@ export function del({ pos, input, key, meta }) {
     return { pos, input };
   }
   if (key === 'word') {
-    if(input[pos] === ' ') {
+    if(input[pos].match(delimiterRegex)) {
       return del(pos, input, 'l');
     }
     const begin = beginWordPos(pos + 1, input);
@@ -225,4 +227,4 @@ export function del({ pos, input, key, meta }) {
     return { pos, input };
   }
   return { pos: pos - 1, input: input.slice(0, pos - 1) + input.slice(pos) };
-};
+}
