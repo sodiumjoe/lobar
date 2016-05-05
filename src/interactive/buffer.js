@@ -2,9 +2,11 @@ import {
   assign,
   chain,
   includes,
-  isEmpty
+  isEmpty,
+  map
 } from 'lodash';
 import { Observable } from 'rxjs';
+import { parse } from 'shell-quote';
 import * as actions from './actions.js';
 import parseArgs from '../parseArgs.js';
 import { evalChain } from '../eval.js';
@@ -19,7 +21,7 @@ const {
 
 export default function buffer(data, args, height, width, keypresses) {
 
-  const initialInput = of(args.join(' ')).map(input => ({ action: 'insert', key: input }));
+  const initialInput = of(parsePreserveQuotes(args).join(' ')).map(input => ({ action: 'insert', key: input }));
 
   const insert = key => ({ action: 'insert', key });
   const move = (key, meta) => ({ action: 'move', key, meta });
@@ -220,7 +222,7 @@ export default function buffer(data, args, height, width, keypresses) {
       result = data;
     } else {
       try {
-        const args = parseArgs(input.split(' '));
+        const args = parseArgs(parse(input));
         result = evalChain(data, args);
       } catch(e) {/* */}
     }
@@ -282,3 +284,5 @@ export const stringify = (json, width) => {
   const re = new RegExp(`.{1,${width}}`, 'g');
   return chain(sfy(json).split('\n')).map(line => line.match(re)).flatten().join('\n').value();
 };
+
+const parsePreserveQuotes = args => map(args, arg => arg.match(/[^A-Za-z]/) ? `"${arg}"` : arg);
