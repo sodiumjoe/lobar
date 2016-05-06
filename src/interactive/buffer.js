@@ -1,4 +1,5 @@
 import {
+  some,
   assign,
   chain,
   includes,
@@ -285,4 +286,9 @@ export const stringify = (json, width) => {
   return chain(sfy(json).split('\n')).map(line => line.match(re)).flatten().join('\n').value();
 };
 
-const parsePreserveQuotes = args => map(args, arg => arg.match(actions.delimiterRegex) ? `"${arg}"` : arg);
+const parsePreserveQuotes = args => map(args, arg => {
+  if (typeof arg === 'string' && some(arg.split(''), char => includes([' ', '=', '>', '(', ')'], char))) {
+    return `"${arg}"`;
+  }
+  return arg;
+});
