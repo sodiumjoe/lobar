@@ -1,40 +1,43 @@
-import {
-  matchesProperty,
-  replace
-} from 'lodash';
-import { realTerminal as term } from 'terminal-kit';
+import decode from 'decode-keypress';
+import readline from 'readline';
 import { Observable } from 'rxjs';
+import { red } from 'chalk';
 import buffer, { stringify } from './buffer.js';
+import { stdin, stdout } from './tty.js';
 
 const { fromEvent } = Observable;
 
 export default function interactive(data, args, cb) {
 
-  term.fullscreen();
-  term.grabInput(true);
+  const keypresses = fromEvent(stdin, 'data').map(data => decode(data)).share();
 
-  const keypresses = fromEvent(term, 'key', (key, matches, data) => ({ key, matches, data })).share();
-
-  buffer(data, args, term.height - 1, term.width, keypresses)
-  .subscribe(({ pos, input, json, scroll, valid, key }) => {
-    term.clear();
-    if (key === 'ENTER') {
+  buffer(data, args, stdout.rows - 1, stdout.columns, keypresses)
+  .subscribe(({ action, pos, input, json, scroll, valid, key }) => {
+    if (key === 'enter') {
       return cb(json);
     }
-    if (valid) {
-      term.noFormat(`${replace(input, '^', '^^')}\n`);
+    if (valid || action && action === 'scroll') {
+      // clear screen
+      stdout.write('\u001b[2J');
     } else {
-      term.red.noFormat(`${replace(input, '^', '^^')}\n`);
+      // clear line
+      readline.clearLine(stdout, 0);
     }
-    term.noFormat(replace(getVisible(stringify(json, term.width), scroll)), '^', '^^');
-    term.moveTo(pos + 1, 1);
+    // hide cursor
+    stdout.write('\x1b[?25l');
+    readline.cursorTo(stdout, 0, 0);
+    stdout.write(`${valid ? input : red(input)}\n`);
+    stdout.write(`${getVisible(stringify(json, stdout.columns), scroll)}`);
+    // move cursor to current pos
+    readline.cursorTo(stdout, pos, 0);
+    stdout.write('\x1b[?25h');
   });
 
-  keypresses.filter(matchesProperty('key', 'CTRL_C')).subscribe(term.processExit.bind(term, 0));
+  keypresses.filter(({ name, ctrl }) => ctrl && name === 'c').subscribe(() => process.exit(0));
 
 }
 
 function getVisible(str, n = 0) {
   const lines = str.split('\n');
-  return lines.slice(n, n + term.height - 1).join('\n');
+  return lines.slice(n, n + stdout.rows - 1).join('\n');
 }

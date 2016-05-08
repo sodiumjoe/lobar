@@ -85,16 +85,13 @@ export function move({ pos, input, key, meta }) {
       input
     };
   }
-  if (key === 'ESCAPE') {
-    return { pos: clamp(pos, 0, input.length - 1), input };
-  }
   if (key === 'append') {
     return { pos: pos + 1, input };
   }
-  if (includes(['h', 'LEFT'], key)) {
+  if (includes(['h', 'left'], key)) {
     return { pos: Math.max(pos - 1, 0), input };
   }
-  if (includes(['l', 'RIGHT'], key)) {
+  if (includes(['l', 'right'], key)) {
     return { pos: clamp(pos + 1, 0, input.length - 1), input };
   }
   if (key === '0') {
@@ -103,7 +100,7 @@ export function move({ pos, input, key, meta }) {
   if (key === '$') {
     return { pos: input.length - 1, input };
   }
-  if (includes(['w', 'CTRL_RIGHT'], key)) {
+  if (includes(['w', 'ctrl_right'], key)) {
     return {
       pos: nextWordPos(pos, input),
       input
@@ -115,14 +112,14 @@ export function move({ pos, input, key, meta }) {
       input
     };
   }
-  if (includes(['b', 'CTRL_LEFT'], key)) {
+  if (includes(['b', 'ctrl_left'], key)) {
     return {
       pos: beginWordPos(pos, input),
       input
     };
   }
 
-  return { pos, input };
+  return { pos: clamp(pos, 0, input.length - 1), input };
 }
 
 export function insert({ pos, input, key }) {

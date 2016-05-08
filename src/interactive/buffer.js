@@ -29,174 +29,184 @@ export default function buffer(data, args, height, width, keypresses) {
   const scroll = key => ({ action: 'scroll', key });
   const del = (key, meta) => ({ action: 'del', key, meta });
 
-  const getInserts = () => create(obs => {
-    keypresses.subscribe(({ key, data: { isCharacter } }) => {
-      if (key === 'ENTER') {
-        obs.next({ action: 'enter', key });
+  const insertMode = () => create(obs => {
+    keypresses.subscribe(key => {
+      const { name, ctrl, meta, sequence } = key;
+      if (includes(['linefeed', 'return'], name)) {
+        obs.next({ action: 'enter' });
         return obs.complete();
       }
-      if (key === 'ESCAPE') {
-        obs.next(move(key));
+      if (name === 'escape') {
+        obs.next(move());
         return obs.complete();
       }
-      if (key === 'BACKSPACE') {
+      if (name === 'backspace') {
         return obs.next(del());
       }
-      if (includes(['RIGHT', 'LEFT', 'CTRL_LEFT', 'CTRL_RIGHT'], key)) {
-        return obs.next(move(key));
+      if (includes(['right', 'left'], name)) {
+        return obs.next(move(name));
       }
-      if (isCharacter) {
-        return obs.next(insert(key));
+      if (!ctrl && !meta) {
+        return obs.next(insert(sequence));
       }
     });
   });
 
-  const getDeletes = cmd => switchMapOnce(keypresses, ({ key }) => {
-    if (key === 'ESCAPE') {
-      return of(move(key));
+  const deleteMode = cmd => switchMapOnce(keypresses, ({ name }) => {
+    if (name === 'escape') {
+      return of(move());
     }
-    if (key === cmd) {
+    if (name === cmd) {
       return of(move('0'), del('$'));
     }
-    if (includes(['h', 'l', 'w', 'e', 'b', '0', '$'], key)) {
-      return of(del(key));
+    if (includes(['h', 'l', 'w', 'e', 'b', '0', '$'], name)) {
+      return of(del(name));
     }
-    if (key === 'i') {
-      return switchMapOnce(keypresses, ({ key }) => {
-        if (key === 'ESCAPE') {
-          return of(move(key));
+    if (name === 'i') {
+      return switchMapOnce(keypresses, ({ name }) => {
+        if (name === 'escape') {
+          return of(move());
         }
-        if (key === 'w') {
+        if (name === 'w') {
           return of(del('word'));
         }
       });
     }
-    if (key === 't') {
-      return switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
-        if (key === 'ESCAPE' || !isCharacter) {
-          return of(move(key));
+    if (name === 't') {
+      return switchMapOnce(keypresses, ({ name }) => {
+        if (name === 'ESCAPE') {
+          return of(move());
         }
-        return of(del('til', key));
+        return of(del('til', name));
       });
     }
-    if (key === 'f') {
-      return switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
-        if (key === 'ESCAPE' || !isCharacter) {
-          return of(move(key));
+    if (name === 'f') {
+      return switchMapOnce(keypresses, ({ name }) => {
+        if (name === 'escape') {
+          return of(move());
         }
-        return of(del('for', key));
+        return of(del('for', name));
       });
     }
-    if (key === 'T') {
-      return switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
-        if (key === 'ESCAPE' || !isCharacter) {
-          return of(move(key));
+    if (name === 'T') {
+      return switchMapOnce(keypresses, ({ name }) => {
+        if (name === 'escape') {
+          return of(move());
         }
-        return of(del('Til', key));
+        return of(del('Til', name));
       });
     }
-    if (key === 'F') {
-      return switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
-        if (key === 'ESCAPE' || !isCharacter) {
-          return of(move(key));
+    if (name === 'F') {
+      return switchMapOnce(keypresses, ({ name }) => {
+        if (name === 'escape') {
+          return of(move());
         }
-        return of(del('For', key));
+        return of(del('For', name));
       });
     }
     return empty();
   });
 
-  const getReplacement = () => switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
-    if (!isCharacter) {
+  const replaceOne = () => switchMapOnce(keypresses, ({ meta, ctrl, sequence }) => {
+    if (meta || ctrl) {
       return empty();
     }
-    return of(move('append'), del(), insert(key), move('ESCAPE'));
+    return of(move('append'), del(), insert(sequence), move());
   });
 
-  const commands = getInserts().concat(switchConcat(keypresses, ({ key }) => {
-    if (key === 'x') {
-      return of(move('append'), del(), move('ESCAPE'));
-    }
-    if (key === 'i') {
-      return getInserts();
-    }
-    if (includes(['h', 'l', 'RIGHT', 'LEFT', 'b', 'w', 'e', '0', '$'], key)) {
-      return of(move(key));
-    }
-    if (key === 'a') {
-      return of(move('append')).concat(getInserts());
-    }
-    if (key === 'A') {
-      return of(move('$'), move('append')).concat(getInserts());
-    }
-    if (key === 'I') {
-      return of(move('0')).concat(getInserts());
-    }
-    if (key === 'd') {
-      return getDeletes(key);
-    }
-    if (key === 'c') {
-      return create(obs => getDeletes(key).subscribe(
-        e => {
-          const { key } = e;
-          if (key === 'ESCAPE') {
-            obs.next(move(key));
-            return obs.complete();
-          }
-          return obs.next(e);
-        },
-        obs.error,
-        () => getInserts().subscribe(obs)
-      ));
-    }
-    if (key === 'r') {
-      return getReplacement();
-    }
-    if (key === 't') {
-      return switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
-        if (key === 'ESCAPE' || !isCharacter) {
-          return of(move(key));
-        }
-        return of(move('til', key));
-      });
-    }
-    if (key === 'T') {
-      return switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
-        if (key === 'ESCAPE' || !isCharacter) {
-          return of(move(key));
-        }
-        return of(move('Til', key));
-      });
-    }
-    if (key === 'f') {
-      return switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
-        if (key === 'ESCAPE' || !isCharacter) {
-          return of(move(key));
-        }
-        return of(move('for', key));
-      });
-    }
-    if (key === 'F') {
-      return switchMapOnce(keypresses, ({ key, data: { isCharacter } }) => {
-        if (key === 'ESCAPE' || !isCharacter) {
-          return of(move(key));
-        }
-        return of(move('For', key));
-      });
-    }
-    if (includes(['G', 'j', 'k', 'CTRL_D', 'CTRL_U'], key)) {
+  const commands = insertMode().concat(switchConcat(keypresses, key => {
+
+    const { name, shift, meta, ctrl } = key;
+
+    if (includes(['j', 'k'], name) ||
+        (name == 'd' && ctrl) ||
+        (name == 'u' && ctrl) ||
+        (name == 'g' && shift)) {
       return of(scroll(key));
     }
-    if (key === 'g') {
-      return switchMapOnce(keypresses, ({ key }) => {
-        if (key === 'g') {
+
+    if (meta || ctrl) { return empty(); }
+
+    if (name === 'x') {
+      return of(move('append'), del(), move());
+    }
+    if (name === 'i' && shift) {
+      return of(move('0')).concat(insertMode());
+    }
+    if (name === 'i') {
+      return insertMode();
+    }
+    if (includes(['h', 'l', 'right', 'left', 'b', 'w', 'e', '0', '$'], name)) {
+      return of(move(name));
+    }
+    if (name === 'a' && shift) {
+      return of(move('$'), move('append')).concat(insertMode());
+    }
+    if (name === 'a') {
+      return of(move('append')).concat(insertMode());
+    }
+    if (name === 'd') {
+      return deleteMode(name);
+    }
+    if (name === 'c') {
+      return create(obs => deleteMode(name).subscribe(
+        key => {
+          const { name } = key;
+          if (name === 'escape') {
+            obs.next(move());
+            return obs.complete();
+          }
+          return obs.next(key);
+        },
+        obs.error,
+        () => insertMode().subscribe(obs)
+      ));
+    }
+    if (name === 'r') {
+      return replaceOne();
+    }
+    if (name === 't') {
+      return switchMapOnce(keypresses, ({ name }) => {
+        if (name === 'escape') {
+          return of(move());
+        }
+        return of(move('til', name));
+      });
+    }
+    if (name === 'T') {
+      return switchMapOnce(keypresses, ({ name }) => {
+        if (name === 'escape') {
+          return of(move());
+        }
+        return of(move('Til', name));
+      });
+    }
+    if (name === 'f') {
+      return switchMapOnce(keypresses, ({ name }) => {
+        if (name === 'escape') {
+          return of(move());
+        }
+        return of(move('for', name));
+      });
+    }
+    if (name === 'F') {
+      return switchMapOnce(keypresses, ({ name }) => {
+        if (name === 'escape') {
+          return of(move());
+        }
+        return of(move('for', name));
+      });
+    }
+    if (name === 'g') {
+      return switchMapOnce(keypresses, ({ name, shift }) => {
+        if (name === 'g' && !shift) {
           return of(scroll(key));
         }
         return empty();
       });
     }
-    if (key === 'ENTER') {
-      return of({ action: 'enter', key });
+    if (includes(['linefeed', 'return'], name)) {
+      return of({ action: 'enter' });
     }
 
     return empty();
@@ -206,10 +216,13 @@ export default function buffer(data, args, height, width, keypresses) {
   .scan((acc, command) => {
     const { action, key } = command;
     if (action === 'scroll') {
-      return assign({}, acc, { scroll: scrollAction(acc.scroll, key, acc.json, height, width) });
+      return assign({}, acc, {
+        action,
+        scroll: scrollAction(acc.scroll, key, acc.json, height, width)
+      });
     }
     if (action === 'enter') {
-      return assign({}, acc, { key });
+      return assign({}, acc, { key: 'enter', action });
     }
 
     const {
@@ -234,7 +247,8 @@ export default function buffer(data, args, height, width, keypresses) {
       json: result || acc.json,
       valid: !!result,
       scroll: 0,
-      key
+      key,
+      action
     };
   }, {
     pos: 0,
@@ -258,24 +272,24 @@ const switchConcat = (input, switchFn, onError, onComplete) => create(obs => {
   init();
 });
 
-const scrollAction = (scroll = 0, key, json, height, width) => {
+const scrollAction = (scroll = 0, { name, shift }, json, height, width) => {
   const max = stringify(json, width).split('\n').length - height;
-  if (key === 'j') {
+  if (name === 'j') {
     return Math.min(max, scroll + 1);
   }
-  if (key === 'k') {
+  if (name === 'k') {
     return Math.max(0, scroll - 1);
   }
-  if (key === 'CTRL_D') {
+  if (name === 'd') {
     return Math.min(max, scroll + height);
   }
-  if (key === 'CTRL_U') {
+  if (name === 'u') {
     return Math.max(0, scroll - height);
   }
-  if (key === 'G') {
+  if (name === 'g' && shift) {
     return max;
   }
-  if (key === 'g') {
+  if (name === 'g') {
     return 0;
   }
   return scroll;
