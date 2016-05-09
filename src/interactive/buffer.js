@@ -43,7 +43,16 @@ export default function buffer(data, args, height, width, keypresses) {
       if (name === 'backspace') {
         return obs.next(del());
       }
-      if (includes(['right', 'left'], name)) {
+      if (name === 'b' && meta) {
+        return obs.next(move('b'));
+      }
+      if (name === 'f' && meta) {
+        return obs.next(move('w'));
+      }
+      if (name === 'right') {
+        return obs.next(move('append'));
+      }
+      if (name === 'left') {
         return obs.next(move(name));
       }
       if (!ctrl && !meta) {
@@ -52,7 +61,7 @@ export default function buffer(data, args, height, width, keypresses) {
     });
   });
 
-  const deleteMode = cmd => switchMapOnce(keypresses, ({ name }) => {
+  const deleteMode = cmd => switchMapOnce(keypresses, ({ name, shift }) => {
     if (name === 'escape') {
       return of(move());
     }
@@ -72,36 +81,36 @@ export default function buffer(data, args, height, width, keypresses) {
         }
       });
     }
-    if (name === 't') {
-      return switchMapOnce(keypresses, ({ name }) => {
-        if (name === 'ESCAPE') {
+    if (name === 't' && shift) {
+      return switchMapOnce(keypresses, ({ name, meta, ctrl, sequence }) => {
+        if (name === 'escape' || meta || ctrl) {
           return of(move());
         }
-        return of(del('til', name));
+        return of(del('Til', sequence));
+      });
+    }
+    if (name === 'f' && shift) {
+      return switchMapOnce(keypresses, ({ name, meta, ctrl, sequence }) => {
+        if (name === 'escape' || meta || ctrl) {
+          return of(move());
+        }
+        return of(del('For', sequence));
+      });
+    }
+    if (name === 't') {
+      return switchMapOnce(keypresses, ({ name, meta, ctrl, sequence }) => {
+        if (name === 'escape' || meta || ctrl) {
+          return of(move());
+        }
+        return of(del('til', sequence));
       });
     }
     if (name === 'f') {
-      return switchMapOnce(keypresses, ({ name }) => {
-        if (name === 'escape') {
+      return switchMapOnce(keypresses, ({ name, meta, ctrl, sequence }) => {
+        if (name === 'escape' || meta || ctrl) {
           return of(move());
         }
-        return of(del('for', name));
-      });
-    }
-    if (name === 'T') {
-      return switchMapOnce(keypresses, ({ name }) => {
-        if (name === 'escape') {
-          return of(move());
-        }
-        return of(del('Til', name));
-      });
-    }
-    if (name === 'F') {
-      return switchMapOnce(keypresses, ({ name }) => {
-        if (name === 'escape') {
-          return of(move());
-        }
-        return of(del('For', name));
+        return of(del('for', sequence));
       });
     }
     return empty();
@@ -165,36 +174,36 @@ export default function buffer(data, args, height, width, keypresses) {
     if (name === 'r') {
       return replaceOne();
     }
-    if (name === 't') {
-      return switchMapOnce(keypresses, ({ name }) => {
+    if (name === 't' && shift) {
+      return switchMapOnce(keypresses, ({ name, sequence }) => {
         if (name === 'escape') {
           return of(move());
         }
-        return of(move('til', name));
+        return of(move('Til', sequence));
       });
     }
-    if (name === 'T') {
-      return switchMapOnce(keypresses, ({ name }) => {
+    if (name === 't') {
+      return switchMapOnce(keypresses, ({ name, sequence }) => {
         if (name === 'escape') {
           return of(move());
         }
-        return of(move('Til', name));
+        return of(move('til', sequence));
+      });
+    }
+    if (name === 'f' && shift) {
+      return switchMapOnce(keypresses, ({ name, sequence }) => {
+        if (name === 'escape') {
+          return of(move());
+        }
+        return of(move('For', sequence));
       });
     }
     if (name === 'f') {
-      return switchMapOnce(keypresses, ({ name }) => {
+      return switchMapOnce(keypresses, ({ name, sequence }) => {
         if (name === 'escape') {
           return of(move());
         }
-        return of(move('for', name));
-      });
-    }
-    if (name === 'F') {
-      return switchMapOnce(keypresses, ({ name }) => {
-        if (name === 'escape') {
-          return of(move());
-        }
-        return of(move('for', name));
+        return of(move('for', sequence));
       });
     }
     if (name === 'g') {

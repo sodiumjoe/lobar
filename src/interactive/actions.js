@@ -86,7 +86,7 @@ export function move({ pos, input, key, meta }) {
     };
   }
   if (key === 'append') {
-    return { pos: pos + 1, input };
+    return { pos: Math.min(pos + 1, input.length), input };
   }
   if (includes(['h', 'left'], key)) {
     return { pos: Math.max(pos - 1, 0), input };
@@ -100,7 +100,7 @@ export function move({ pos, input, key, meta }) {
   if (key === '$') {
     return { pos: input.length - 1, input };
   }
-  if (includes(['w', 'ctrl_right'], key)) {
+  if (key === 'w') {
     return {
       pos: nextWordPos(pos, input),
       input
@@ -112,7 +112,7 @@ export function move({ pos, input, key, meta }) {
       input
     };
   }
-  if (includes(['b', 'ctrl_left'], key)) {
+  if (key === 'b') {
     return {
       pos: beginWordPos(pos, input),
       input
@@ -137,7 +137,7 @@ export function del({ pos, input, key, meta }) {
     const end = tilChar(pos, input, meta);
     return {
       pos,
-      input: end ? input.slice(0, pos) + input.slice(pos + end + 1) : input
+      input: end ? input.slice(0, pos) + input.slice(end + 1) : input
     };
   }
   if (key === 'Til') {
@@ -154,7 +154,7 @@ export function del({ pos, input, key, meta }) {
     const end = tilChar(pos, input, meta);
     return {
       pos,
-      input: end ? input.slice(0, pos) + input.slice(pos + end + 2) : input
+      input: end ? input.slice(0, pos) + input.slice(end + 2) : input
     };
   }
   if (key === 'For') {

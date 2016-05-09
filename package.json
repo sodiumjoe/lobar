@@ -30,7 +30,7 @@
   "license": "ISC",
   "dependencies": {
     "chalk": "^1.1.3",
-    "decode-keypress": "0.0.2",
+    "decode-keypress": "0.0.3",
     "lodash": "^4.11.1",
     "maquillage": "0.0.2",
     "rxjs": "^5.0.0-beta.7",
