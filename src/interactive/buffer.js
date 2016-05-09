@@ -257,7 +257,8 @@ export default function buffer(data, args, width, height, keypresses) {
         pos,
         input,
         output: result ? getVisible(stringify(result, width), width, height) : acc.output,
-        json: result || acc.json
+        json: result || acc.json,
+        scroll: 0
       });
 
     }
