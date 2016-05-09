@@ -62,6 +62,17 @@ $ cat package.json | lbr -i
 
 ![interactive mode gif](https://raw.githubusercontent.com/sodiumjoe/lobar/master/lobar.gif)
 
+#### vi keybindings
+
+Interactive mode has basic vi keybindings. It starts in `insert` mode. Hitting
+`esc` will drop you into normal mode, where you can move horizontally with `h`,
+`l`, `b`, `w`, `e`, `t`, `f`, `T`, `F`, `0`, and `$`. You can also use `c` and
+`d` with those movements in addition to `iw`. Vertical movement ('j', 'k',
+`<C-d>`, `<C-u>`), will scroll the json output.
+
+`<C-c>` to exit or `enter` to exit and print the currently evaluated json to
+`stdout`.
+
 ### caveats
 
 If you want to use a string argument for a method that collides with a lodash
