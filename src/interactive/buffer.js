@@ -227,62 +227,36 @@ export default function buffer(data, args, width, height, keypresses) {
   return concat(initialInput, commands)
   .scan((acc, command) => {
     const { action, key } = command;
-    if (action === 'scroll') {
-      return assign({}, acc, {
-        action,
-        scroll: scrollAction(acc.scroll, key, acc.json, height, width)
-      });
-    }
+
     if (action === 'enter') {
       return assign({}, acc, { action });
     }
+
+    if (action === 'scroll') {
+      const scroll = scrollAction(acc.scroll, key, acc.json, height, width);
+      if (scroll !== acc.scroll) {
+        return assign({}, acc, {
+          action,
+          scroll,
+          output: getVisible(stringify(parseDataWithInput(data, acc.input) || acc.json, width), width, height, scroll)
+        });
+      }
+      return acc;
+    }
+
     const {
       pos,
       input
     } = actions[action](assign({}, acc, command));
-    return {
-      pos,
-      input,
-      scroll: 0,
-      action
-    };
-  }, {
-    pos: 0,
-    input: '',
-    scroll: 0
-  })
-  .startWith({
-    pos: 0,
-    input: '',
-    scroll: 0
-  })
-  .scan((acc, { pos, input, scroll, action }) => {
-
-    if (action === 'enter') {
-      return assign({}, acc, { action });
-    }
 
     if (input !== acc.input) {
 
-      let result;
-
-      if (isEmpty(input)) {
-        result = data;
-      } else {
-        try {
-          const args = parseArgs(parse(input));
-          result = evalChain(data, args);
-        } catch(e) {/* */}
-      }
-
-      const output = result
-        ? getVisible(stringify(result, width), width, height, scroll)
-        : acc.output;
+      const result = parseDataWithInput(data, input);
 
       return assign({}, acc, {
         pos,
         input,
-        output,
+        output: result ? getVisible(stringify(result, width), width, height) : acc.output,
         json: result || acc.json
       });
 
@@ -290,12 +264,6 @@ export default function buffer(data, args, width, height, keypresses) {
 
     if (pos !== acc.pos) {
       return assign({}, acc, { pos });
-    }
-
-    if (scroll !== acc.scroll) {
-      return assign({}, acc, {
-        output: getVisible(stringify(acc.json, width), width, height, scroll)
-      });
     }
 
     return acc;
@@ -375,4 +343,16 @@ function getVisible(str, width, height, n = 0) {
   .slice(0, height)
   .join('\n')
   .value();
+}
+
+function parseDataWithInput(data, input) {
+  if (isEmpty(input)) {
+    return data;
+  }
+  try {
+    const args = parseArgs(parse(input));
+    return evalChain(data, args);
+  } catch(e) {
+    return null;
+  }
 }
