@@ -251,6 +251,11 @@ export default function buffer(data, args, width, height, keypresses) {
     input: '',
     scroll: 0
   })
+  .startWith({
+    pos: 0,
+    input: '',
+    scroll: 0
+  })
   .scan((acc, { pos, input, scroll, action }) => {
 
     if (action === 'enter') {
@@ -298,7 +303,16 @@ export default function buffer(data, args, width, height, keypresses) {
   }, {
     pos: 0,
     input: '',
-    scroll: 0
+    scroll: 0,
+    json: data,
+    output: getVisible(stringify(data, width), width, height)
+  })
+  .startWith({
+    pos: 0,
+    input: '',
+    scroll: 0,
+    json: data,
+    output: getVisible(stringify(data, width), width, height)
   });
 
 }
