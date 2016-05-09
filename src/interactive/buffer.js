@@ -1,17 +1,20 @@
 import {
-  some,
   assign,
   chain,
+  fill,
   includes,
   isEmpty,
-  map
+  map,
+  repeat,
+  some
 } from 'lodash';
 import { Observable } from 'rxjs';
 import { parse } from 'shell-quote';
+import sfy from 'maquillage';
+import strip from 'strip-ansi';
 import * as actions from './actions.js';
 import parseArgs from '../parseArgs.js';
 import { evalChain } from '../eval.js';
-import sfy from 'maquillage';
 
 const {
   create,
@@ -20,7 +23,7 @@ const {
   of
 } = Observable;
 
-export default function buffer(data, args, height, width, keypresses) {
+export default function buffer(data, args, width, height, keypresses) {
 
   const initialInput = of(parsePreserveQuotes(args).join(' ')).map(input => ({ action: 'insert', key: input }));
 
@@ -231,41 +234,71 @@ export default function buffer(data, args, height, width, keypresses) {
       });
     }
     if (action === 'enter') {
-      return assign({}, acc, { key: 'enter', action });
+      return assign({}, acc, { action });
     }
-
     const {
       pos,
       input
     } = actions[action](assign({}, acc, command));
-
-    let result;
-
-    if (isEmpty(input)) {
-      result = data;
-    } else {
-      try {
-        const args = parseArgs(parse(input));
-        result = evalChain(data, args);
-      } catch(e) {/* */}
-    }
-
     return {
       pos,
       input,
-      json: result || acc.json,
-      valid: !!result,
       scroll: 0,
-      key,
       action
     };
   }, {
     pos: 0,
     input: '',
-    scroll: 0,
-    json: data,
-    valid: false,
-    key: null
+    scroll: 0
+  })
+  .scan((acc, { pos, input, scroll, action }) => {
+
+    if (action === 'enter') {
+      return assign({}, acc, { action });
+    }
+
+    if (input !== acc.input) {
+
+      let result;
+
+      if (isEmpty(input)) {
+        result = data;
+      } else {
+        try {
+          const args = parseArgs(parse(input));
+          result = evalChain(data, args);
+        } catch(e) {/* */}
+      }
+
+      const output = result
+        ? getVisible(stringify(result, width), width, height, scroll)
+        : acc.output;
+
+      return assign({}, acc, {
+        pos,
+        input,
+        output,
+        json: result || acc.json
+      });
+
+    }
+
+    if (pos !== acc.pos) {
+      return assign({}, acc, { pos });
+    }
+
+    if (scroll !== acc.scroll) {
+      return assign({}, acc, {
+        output: getVisible(stringify(acc.json, width), width, height, scroll)
+      });
+    }
+
+    return acc;
+
+  }, {
+    pos: 0,
+    input: '',
+    scroll: 0
   });
 
 }
@@ -304,7 +337,7 @@ const scrollAction = (scroll = 0, { name, shift }, json, height, width) => {
   return scroll;
 };
 
-export const stringify = (json, width) => {
+const stringify = (json, width) => {
   const re = new RegExp(`.{1,${width}}`, 'g');
   return chain(sfy(json).split('\n')).map(line => line.match(re)).flatten().join('\n').value();
 };
@@ -315,3 +348,17 @@ const parsePreserveQuotes = args => map(args, arg => {
   }
   return arg;
 });
+
+function getVisible(str, width, height, n = 0) {
+  const blank = fill(Array(height), repeat(' ', width));
+  const lines = str.split('\n');
+  return chain(lines)
+  .slice(n, n + height)
+  // pad end of each line
+  .map(line => `${line}${repeat(' ', width - strip(line).length)}`)
+  // clear under end of input if it doesn't fill height of terminal
+  .concat(blank)
+  .slice(0, height)
+  .join('\n')
+  .value();
+}
