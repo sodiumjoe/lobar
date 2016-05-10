@@ -238,7 +238,7 @@ export default function buffer(data, args, width, height, keypresses) {
         return assign({}, acc, {
           action,
           scroll,
-          output: getVisible(stringify(evailWithInput(data, acc.input) || acc.json, width), width, height, scroll)
+          output: getVisible(stringify(evalWithInput(data, acc.input) || acc.json, width), width, height, scroll)
         });
       }
       return acc;
@@ -251,7 +251,7 @@ export default function buffer(data, args, width, height, keypresses) {
 
     if (input !== acc.input) {
 
-      const result = evailWithInput(data, input);
+      const result = evalWithInput(data, input);
 
       return assign({}, acc, {
         pos,
@@ -346,7 +346,7 @@ function getVisible(str, width, height, n = 0) {
   .value();
 }
 
-function evailWithInput(data, input) {
+function evalWithInput(data, input) {
   if (isEmpty(input)) {
     return data;
   }
