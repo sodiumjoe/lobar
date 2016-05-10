@@ -18,14 +18,16 @@ import { evalChain } from '../eval.js';
 
 const {
   create,
-  concat,
   empty,
   of
 } = Observable;
 
 export default function buffer(data, args, width, height, keypresses) {
 
-  const initialInput = of(parsePreserveQuotes(args).join(' ')).map(input => ({ action: 'insert', key: input }));
+  const initialInput = parsePreserveQuotes(args).join(' ');
+  const initialResult = evalWithInput(data, initialInput);
+  const initialJson = initialResult || data;
+  const initialOutput = getVisible(stringify(initialJson, width), width, height);
 
   const insert = key => ({ action: 'insert', key });
   const move = (key, meta) => ({ action: 'move', key, meta });
@@ -224,8 +226,7 @@ export default function buffer(data, args, width, height, keypresses) {
     return empty();
   }));
 
-  return concat(initialInput, commands)
-  .scan((acc, command) => {
+  return commands.scan((acc, command) => {
     const { action, key } = command;
 
     if (action === 'enter') {
@@ -258,6 +259,7 @@ export default function buffer(data, args, width, height, keypresses) {
         input,
         output: result ? getVisible(stringify(result, width), width, height) : acc.output,
         json: result || acc.json,
+        valid: !!result,
         scroll: 0
       });
 
@@ -270,18 +272,20 @@ export default function buffer(data, args, width, height, keypresses) {
     return acc;
 
   }, {
-    pos: 0,
-    input: '',
+    input: initialInput,
+    json: initialJson,
+    output: initialOutput,
+    pos: initialInput.length,
     scroll: 0,
-    json: data,
-    output: getVisible(stringify(data, width), width, height)
+    valid: !!initialResult
   })
   .startWith({
-    pos: 0,
-    input: '',
+    input: initialInput,
+    json: initialJson,
+    output: initialOutput,
+    pos: initialInput.length,
     scroll: 0,
-    json: data,
-    output: getVisible(stringify(data, width), width, height)
+    valid: !!initialResult
   });
 
 }
