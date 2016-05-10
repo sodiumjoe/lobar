@@ -5,6 +5,7 @@ import {
   includes,
   isEmpty,
   map,
+  matchesProperty,
   repeat,
   some
 } from 'lodash';
@@ -22,7 +23,9 @@ const {
   of
 } = Observable;
 
-export default function buffer(data, args, width, height, keypresses) {
+export default function buffer(data, args, width, height, rawKeypresses) {
+
+  const [enter, keypresses] = rawKeypresses.partition(matchesProperty('name', 'return'));
 
   const initialInput = parsePreserveQuotes(args).join(' ');
   const initialResult = evalWithInput(data, initialInput);
@@ -37,10 +40,6 @@ export default function buffer(data, args, width, height, keypresses) {
   const insertMode = () => create(obs => {
     keypresses.subscribe(key => {
       const { name, ctrl, meta, sequence } = key;
-      if (includes(['linefeed', 'return'], name)) {
-        obs.next({ action: 'enter' });
-        return obs.complete();
-      }
       if (name === 'escape') {
         obs.next(move());
         return obs.complete();
@@ -219,19 +218,12 @@ export default function buffer(data, args, width, height, keypresses) {
         return empty();
       });
     }
-    if (includes(['linefeed', 'return'], name)) {
-      return of({ action: 'enter' });
-    }
 
     return empty();
-  }));
+  })).takeUntil(enter);
 
   return commands.scan((acc, command) => {
     const { action, key } = command;
-
-    if (action === 'enter') {
-      return assign({}, acc, { action });
-    }
 
     if (action === 'scroll') {
       const scroll = scrollAction(acc.scroll, key, acc.json, height, width);

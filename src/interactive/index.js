@@ -15,13 +15,7 @@ export default function interactive(data, args, cb) {
   const keypresses = fromEvent(stdin, 'data').map(data => decode(data)).share();
 
   buffer(data, args, stdout.columns, stdout.rows - 1, keypresses)
-  .subscribe(({ action, pos, input, output, json, valid }) => {
-    if (action === 'enter') {
-      // clear screen
-      stdout.write('\u001b[2J');
-      readline.cursorTo(stdout, 0, 0);
-      return cb(json);
-    }
+  .do(({ pos, input, output, valid }) => {
     // hide cursor
     stdout.write('\x1b[?25l');
     // clear line
@@ -33,6 +27,12 @@ export default function interactive(data, args, cb) {
     readline.cursorTo(stdout, pos, 0);
     // show cursor
     stdout.write('\x1b[?25h');
+  })
+  .takeLast(1)
+  .subscribe(({ json }) => {
+    stdout.write('\u001b[2J');
+    readline.cursorTo(stdout, 0, 0);
+    return cb(json);
   });
 
   keypresses.filter(({ name, ctrl }) => ctrl && name === 'c').subscribe(() => process.exit(0));
