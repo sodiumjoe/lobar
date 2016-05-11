@@ -112,7 +112,4 @@ generally enough for what I want to do at the command line.
 
 * interactive mode
   - commands:
-    - c,d
-      - -aw
-      - i{',"(,{,[}
     - R

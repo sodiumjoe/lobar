@@ -80,14 +80,18 @@ export default function buffer(data, args, width, height, rawKeypresses) {
     if (includes(['h', 'l', 'w', 'e', 'b', '0', '$'], name)) {
       return of(del(name));
     }
-    if (name === 'i') {
-      return switchMapOnce(keypresses, ({ name }) => {
-        if (name === 'escape') {
+    if (includes(['i', 'a'], name)) {
+      return switchMapOnce(keypresses, ({ name: meta }) => {
+        if (meta === 'escape') {
           return of(move());
         }
-        if (name === 'w') {
-          return of(del('word'));
+        if (meta === 'w') {
+          return of(del(name, 'word'), move());
         }
+        if (includes(['{', '}', '(', ')', '[', ']', '\'', '"'], meta)) {
+          return of(del(name, meta));
+        }
+        return of(move());
       });
     }
     if (name === 't' && shift) {
@@ -136,10 +140,7 @@ export default function buffer(data, args, width, height, rawKeypresses) {
 
     const { name, shift, meta, ctrl } = key;
 
-    if (includes(['j', 'k'], name) ||
-        (name == 'd' && ctrl) ||
-        (name == 'u' && ctrl) ||
-        (name == 'g' && shift)) {
+    if (includes(['j', 'k'], name) || (includes(['d', 'u'], name) && ctrl) || (name == 'g' && shift)) {
       return of(scroll(key));
     }
 

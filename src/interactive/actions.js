@@ -1,10 +1,13 @@
 import {
   chain,
   clamp,
-  includes
+  includes,
+  reduce
 } from 'lodash';
 
 export const delimiterRegex = /[^A-Za-z]/;
+
+const pairs = [['{', '}'], ['(', ')'], ['[', ']']];
 
 const beginWordPos = (pos, input) => pos === 0 ? pos : chain(input)
 .transform((acc, char, i) => {
@@ -167,15 +170,50 @@ export function del({ pos, input, key, meta }) {
     }
     return { pos, input };
   }
-  if (key === 'word') {
-    if(input[pos].match(delimiterRegex)) {
-      return del(pos, input, 'l');
+  if (includes(['i', 'a'], key)) {
+    if (meta === 'word') {
+      if (input[pos].match(delimiterRegex)) {
+        return del(pos, input, 'l');
+      }
+      const begin = beginWordPos(pos + 1, input);
+      const end = endWordPos(pos - 1, input) + 1;
+      if (key === 'a') {
+        if (input[end] === ' ') {
+          return {
+            pos: begin,
+            input: input.slice(0, begin) + input.slice(end + 1)
+          };
+        }
+        if (input[begin - 1] === ' ') {
+          return {
+            pos: begin - 1,
+            input: input.slice(0, begin - 1) + input.slice(end)
+          };
+        }
+      }
+      return {
+        pos: begin,
+        input: input.slice(0, begin) + input.slice(end)
+      };
     }
-    const begin = beginWordPos(pos + 1, input);
-    return {
-      pos: begin,
-      input: input.slice(0, begin) + input.slice(endWordPos(pos - 1, input) + 1)
-    };
+
+    const [ head, tail ] = reduce(pairs, (acc, pair) => includes(pair, meta) ? pair : acc, [meta, meta]);
+
+    const begin = tilCharBack(pos, input, head);
+    const end = tilChar(pos, input, tail);
+    if (begin && end) {
+      if (key === 'i') {
+        return {
+          pos: begin,
+          input: input.slice(0, begin) + input.slice(end + 1)
+        };
+      }
+      return {
+        pos: begin - 1,
+        input: input.slice(0, begin - 1) + input.slice(end + 2)
+      };
+    }
+    return { pos, input };
   }
   if (key === 'h') {
     return del(pos, input);
