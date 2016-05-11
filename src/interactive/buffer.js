@@ -28,6 +28,7 @@ export default function buffer(data, args, width, height, rawKeypresses) {
   const initialOutput = getVisible(stringify(initialJson, width), width, height);
 
   return commands(rawKeypresses).scan((acc, command) => {
+
     const { action, key } = command;
 
     if (action === 'copy') {
@@ -41,7 +42,7 @@ export default function buffer(data, args, width, height, rawKeypresses) {
         return assign({}, acc, {
           action,
           scroll,
-          output: getVisible(stringify(evalWithInput(data, acc.input) || acc.json, width), width, height, scroll)
+          output: getVisible(stringify(acc.json, width), width, height, scroll)
         });
       }
       return acc;
