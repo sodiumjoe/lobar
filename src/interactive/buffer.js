@@ -88,7 +88,8 @@ export default function buffer(data, args, width, height, rawKeypresses) {
         json: result || acc.json,
         valid: !!result,
         scroll: 0,
-        undos: acc.undos.concat(pick(acc, ['input', 'output', 'json', 'valid', 'pos']))
+        undos: acc.undos.concat(pick(acc, ['input', 'output', 'json', 'valid', 'pos'])),
+        redos: []
       });
 
     }
