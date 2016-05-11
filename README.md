@@ -66,12 +66,17 @@ $ cat package.json | lbr -i
 
 Interactive mode has basic vi keybindings. It starts in `insert` mode.
 
+##### normal mode
+
 Hitting `esc` will drop you into normal mode, where you can move horizontally
 with `h`, `l`, `b`, `w`, `e`, `t`, `f`, `T`, `F`, `0`, and `$`. You can also use
-`c` and `d` with those movements in addition to `iw`. Vertical movement ('j',
-'k', `<C-d>`, `<C-u>`), will scroll the json output.
+`c` and `d` with those movements in addition to `i` and `a` with a character or
+one of `{}[]{}'"`. Vertical movement ('j', 'k', `<C-d>`, `<C-u>`), will scroll the
+json output.
 
 `u` to undo and `<C-r>` to redo.
+
+`y` will copy your current prompt input to your clipboard.
 
 `<C-c>` to exit or `enter` to exit and print the currently evaluated json to
 `stdout`.
@@ -111,5 +116,6 @@ generally enough for what I want to do at the command line.
 ## TODO
 
 * interactive mode
+  - autocomplete
   - commands:
     - R

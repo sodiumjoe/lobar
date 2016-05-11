@@ -12,6 +12,7 @@ import {
   repeat,
   some
 } from 'lodash';
+import { copy as cp } from 'copy-paste';
 import { Observable } from 'rxjs';
 import { parse } from 'shell-quote';
 import sfy from 'maquillage';
@@ -41,6 +42,7 @@ export default function buffer(data, args, width, height, rawKeypresses) {
   const del = (key, meta) => ({ action: 'del', key, meta });
   const undo = () => ({ action: 'undo' });
   const redo = () => ({ action: 'redo' });
+  const copy = () => ({ action: 'copy' });
 
   const insertMode = () => create(obs => {
     keypresses.subscribe(key => {
@@ -150,6 +152,10 @@ export default function buffer(data, args, width, height, rawKeypresses) {
 
     if (meta || ctrl) { return empty(); }
 
+    if (name === 'y') {
+      return of(copy());
+    }
+
     if (name === 'u') {
       return of(undo());
     }
@@ -238,6 +244,11 @@ export default function buffer(data, args, width, height, rawKeypresses) {
 
   return commands.scan((acc, command) => {
     const { action, key } = command;
+
+    if (action === 'copy') {
+      cp(acc.input);
+      return acc;
+    }
 
     if (action === 'scroll') {
       const scroll = scrollAction(acc.scroll, key, acc.json, height, width);
