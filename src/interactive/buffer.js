@@ -1,11 +1,14 @@
 import {
   assign,
   chain,
+  dropRight,
   fill,
   includes,
   isEmpty,
+  last,
   map,
   matchesProperty,
+  pick,
   repeat,
   some
 } from 'lodash';
@@ -25,7 +28,7 @@ const {
 
 export default function buffer(data, args, width, height, rawKeypresses) {
 
-  const [enter, keypresses] = rawKeypresses.partition(matchesProperty('name', 'return'));
+  const [ enter, keypresses ] = rawKeypresses.partition(matchesProperty('name', 'return'));
 
   const initialInput = parsePreserveQuotes(args).join(' ');
   const initialResult = evalWithInput(data, initialInput);
@@ -36,6 +39,8 @@ export default function buffer(data, args, width, height, rawKeypresses) {
   const move = (key, meta) => ({ action: 'move', key, meta });
   const scroll = key => ({ action: 'scroll', key });
   const del = (key, meta) => ({ action: 'del', key, meta });
+  const undo = () => ({ action: 'undo' });
+  const redo = () => ({ action: 'redo' });
 
   const insertMode = () => create(obs => {
     keypresses.subscribe(key => {
@@ -138,7 +143,15 @@ export default function buffer(data, args, width, height, rawKeypresses) {
       return of(scroll(key));
     }
 
+    if (name === 'r' && ctrl) {
+      return of(redo());
+    }
+
     if (meta || ctrl) { return empty(); }
+
+    if (name === 'u') {
+      return of(undo());
+    }
 
     if (name === 'x') {
       return of(move('append'), del(), move());
@@ -237,6 +250,30 @@ export default function buffer(data, args, width, height, rawKeypresses) {
       return acc;
     }
 
+    if (action === 'redo') {
+      if (isEmpty(acc.redos)) {
+        return acc;
+      }
+      const nextState = last(acc.redos);
+      return assign({}, acc, nextState, {
+        undos: acc.undos.concat(nextState),
+        redos: dropRight(acc.redos),
+        scroll: 0
+      });
+    }
+
+    if (action === 'undo') {
+      if (isEmpty(acc.undos)) {
+        return acc;
+      }
+      const lastState = last(acc.undos);
+      return assign({}, acc, lastState, {
+        undos: dropRight(acc.undos),
+        redos: acc.redos.concat(pick(acc, ['input', 'output', 'json', 'valid', 'pos'])),
+        scroll: 0
+      });
+    }
+
     const {
       pos,
       input
@@ -252,7 +289,8 @@ export default function buffer(data, args, width, height, rawKeypresses) {
         output: result ? getVisible(stringify(result, width), width, height) : acc.output,
         json: result || acc.json,
         valid: !!result,
-        scroll: 0
+        scroll: 0,
+        undos: acc.undos.concat(pick(acc, ['input', 'output', 'json', 'valid', 'pos']))
       });
 
     }
@@ -269,7 +307,9 @@ export default function buffer(data, args, width, height, rawKeypresses) {
     output: initialOutput,
     pos: initialInput.length,
     scroll: 0,
-    valid: !!initialResult
+    valid: !!initialResult,
+    undos: [],
+    redos: []
   })
   .startWith({
     input: initialInput,
@@ -277,7 +317,9 @@ export default function buffer(data, args, width, height, rawKeypresses) {
     output: initialOutput,
     pos: initialInput.length,
     scroll: 0,
-    valid: !!initialResult
+    valid: !!initialResult,
+    undos: [],
+    redos: []
   });
 
 }
