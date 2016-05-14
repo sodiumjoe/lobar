@@ -13,8 +13,8 @@ export function evalChain(data, args, verbose) {
   const pairs = makePairs(args);
 
   verbose && verbose > 1 && console.log('lodash string:');
-  verbose && verbose > 1 && console.log(reduce(pairs, function(memo, pair) {
-    return memo + '.' + pair[0] + '(' + pair[1] + ')';
+  verbose && verbose > 1 && console.log(reduce(pairs, (memo, [method, arg]) => {
+    return `${memo}.${method}(${arg})`;
   }, '_.chain(data)') + '.value()');
 
   return reduce(pairs, (chainObj, [method, arg]) => {
@@ -41,9 +41,9 @@ export function evalWith(str, context) {
 function makePairs(args) {
   return reduce(args, (memo, arg) => {
     if (isNull(memo.method)) {
-      return assign({}, memo, { method: arg });
+      return assign(memo, { method: arg });
     }
-    return assign({}, memo, {
+    return assign(memo, {
       pairs: memo.pairs.concat([[memo.method, arg]]),
       method: null
     });
