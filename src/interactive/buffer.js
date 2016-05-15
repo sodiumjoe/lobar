@@ -3,25 +3,22 @@ import {
   chain,
   dropRight,
   fill,
-  first,
-  forEach,
   includes,
   isEmpty,
   isNil,
-  keys,
   last,
   map,
   pick,
   repeat,
   some
 } from 'lodash';
-import Trie from 'triejs';
 import { copy as cp } from 'copy-paste';
 import { parse } from 'shell-quote';
 import sfy from 'maquillage';
 import strip from 'strip-ansi';
 import * as actions from './actions.js';
 import commands from './commands';
+import { getCompletions, getCompletionState } from './completion.js';
 import { parseArgs, validateArgs } from '../parseArgs.js';
 import { evalChain } from '../eval.js';
 
@@ -41,21 +38,9 @@ export default function buffer(data, args, width, height, rawKeypresses) {
       return acc;
     }
 
-    if (action === 'completion.next' && !isEmpty(acc.completions)) {
-      const selectedCompletionIndex = acc.selectedCompletionIndex === null
-        ? 0
-        : acc.selectedCompletionIndex === acc.completions.length - 1
-          ? null
-          : acc.selectedCompletionIndex + 1;
-
-      const input = acc.selectedCompletionIndex === acc.completions.length - 1
-        ? acc.preCompletionInput
-        : acc.input.slice(0, acc.completionPos) + acc.completions[selectedCompletionIndex];
-
+    if (includes(['completion.next', 'completion.previous'], action) && !isEmpty(acc.completions)) {
+      const { selectedCompletionIndex, input, preCompletionInput } = getCompletionState(action, acc);
       const { result } = evalWithInput(data, input, acc.pos);
-
-      const preCompletionInput = acc.selectedCompletionIndex === null ? acc.input : acc.preCompletionInput;
-
       return assign(acc, {
         selectedCompletionIndex,
         preCompletionInput,
@@ -65,35 +50,6 @@ export default function buffer(data, args, width, height, rawKeypresses) {
         json: isNil(result) ? acc.json : result,
         valid: !isNil(result)
       });
-
-    }
-
-    if (action === 'completion.previous' && !isEmpty(acc.completions)) {
-
-      const selectedCompletionIndex = acc.selectedCompletionIndex === null
-        ? acc.completions.length - 1
-        : acc.selectedCompletionIndex === 0
-          ? null
-          : acc.selectedCompletionIndex - 1;
-
-      const input = acc.selectedCompletionIndex === 0
-        ? acc.preCompletionInput
-        : acc.input.slice(0, acc.completionPos) + acc.completions[selectedCompletionIndex];
-
-      const { result } = evalWithInput(data, input, acc.pos);
-
-      const preCompletionInput = acc.selectedCompletionIndex === null ? acc.input : acc.preCompletionInput;
-
-      return assign(acc, {
-        selectedCompletionIndex,
-        preCompletionInput,
-        input,
-        pos: input.length,
-        output: !isNil(result) ? getVisible(stringify(result, width), width, height) : acc.output,
-        json: isNil(result) ? acc.json : result,
-        valid: !isNil(result)
-      });
-
     }
 
     if (action === 'scroll') {
@@ -286,34 +242,4 @@ function evalWithInput(data, input, pos) {
     completionPos: null
   };
 
-}
-
-function getCompletions(data, input, pos, args) {
-  const trie = new Trie();
-  if (args.length % 2 === 0) {
-    const [currentMethod, currentArg] = args.slice(-2);
-    if (currentMethod === 'get') {
-      const result = evalChain(data, dropRight(args));
-      const resultKeys = keys(result);
-      forEach(resultKeys, key => trie.add(key, key));
-      return {
-        completions: trie.find(currentArg),
-        completionPos: chain(input).split(' ').flatMap(s => s.split('.')).slice(0, -1).join(' ').size().value() + 1
-      };
-    }
-  }
-  if (includes(['.', ' '], last(input))) {
-    const currentMethod = last(args);
-    if (currentMethod === 'get' || last(input) === '.') {
-      const result = evalChain(data, args);
-      return {
-        completions: keys(result),
-        completionPos: input.length
-      };
-    }
-  }
-  return {
-    completions: [],
-    completionPos: null
-  };
 }
