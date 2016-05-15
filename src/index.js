@@ -4,7 +4,7 @@ import { readFile } from 'fs';
 import stringify from 'maquillage';
 import yargs from 'yargs';
 import parseJson from './parseJson.js';
-import parseArgs from './parseArgs.js';
+import { parseArgs, validateArgs } from './parseArgs.js';
 import { evalChain } from './eval.js';
 import interactive from './interactive';
 
@@ -64,13 +64,14 @@ getInputs(argv, (err, inputs) => {
     });
   }
 
-  let args;
+  const args = parseArgs(inputs.args, argv.v);
 
   try {
-    args = parseArgs(inputs.args, argv.v);
+    validateArgs(args);
   } catch(e) {
     console.error(e.message);
-    return yargs.showHelp();
+    yargs.showHelp();
+    process.exit(1);
   }
 
   const result = evalChain(data, args, argv.v);

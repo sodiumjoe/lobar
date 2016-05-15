@@ -21,13 +21,23 @@ export default function commands(rawKeypresses) {
   const undo = () => ({ action: 'undo' });
   const redo = () => ({ action: 'redo' });
   const copy = () => ({ action: 'copy' });
+  const completion = {
+    next: () => ({ action: 'completion.next' }),
+    prev: () => ({ action: 'completion.previous' })
+  };
 
   const insertMode = () => create(obs => {
     keypresses.subscribe(key => {
-      const { name, ctrl, meta, sequence } = key;
+      const { name, ctrl, meta, shift, sequence } = key;
       if (name === 'escape') {
         obs.next(move());
         return obs.complete();
+      }
+      if (name === 'tab' && shift) {
+        return obs.next(completion.prev());
+      }
+      if (name === 'tab') {
+        return obs.next(completion.next());
       }
       if (name === 'backspace') {
         return obs.next(del());
