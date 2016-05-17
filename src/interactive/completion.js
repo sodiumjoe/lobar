@@ -16,7 +16,12 @@ import { ARRAY, ARRAY_MATCHES, OBJECT, OBJECT_MATCHES } from './constants.js';
 
 export function getCompletionState(action, state) {
 
-  if (action === 'completion.next' && !isEmpty(state.completions)) {
+  if (isEmpty(state.completions)) {
+    return state;
+  }
+
+  if (action === 'completion.next') {
+
     const selectedCompletionIndex = state.selectedCompletionIndex === null
       ? 0
       : state.selectedCompletionIndex === state.completions.length - 1
@@ -25,14 +30,22 @@ export function getCompletionState(action, state) {
 
     const input = state.selectedCompletionIndex === state.completions.length - 1
       ? state.preCompletionInput
-      : state.input.slice(0, state.completionPos) + state.completions[selectedCompletionIndex];
+      : state.input.slice(0, state.completionPos) + state.completions[selectedCompletionIndex] + state.input.slice(state.pos);
 
     const preCompletionInput = state.selectedCompletionIndex === null ? state.input : state.preCompletionInput;
+
+    const preCompletionPos = state.selectedCompletionIndex === null ? state.pos : state.preCompletionPos;
+
+    const pos = state.selectedCompletionIndex === state.completions.length - 1
+      ? state.preCompletionPos
+      : state.completionPos + state.completions[selectedCompletionIndex].length;
 
     return {
       selectedCompletionIndex,
       preCompletionInput,
-      input
+      preCompletionPos,
+      input,
+      pos
     };
 
   }
@@ -45,14 +58,22 @@ export function getCompletionState(action, state) {
 
   const input = state.selectedCompletionIndex === 0
     ? state.preCompletionInput
-    : state.input.slice(0, state.completionPos) + state.completions[selectedCompletionIndex];
+    : state.input.slice(0, state.completionPos) + state.completions[selectedCompletionIndex] + state.input.slice(state.pos);
 
   const preCompletionInput = state.selectedCompletionIndex === null ? state.input : state.preCompletionInput;
+
+  const preCompletionPos = state.selectedCompletionIndex === null ? state.pos : state.preCompletionPos;
+
+  const pos = state.selectedCompletionIndex === 0
+    ? state.preCompletionPos
+    : state.completionPos + state.completions[selectedCompletionIndex].length;
 
   return {
     selectedCompletionIndex,
     preCompletionInput,
-    input
+    preCompletionPos,
+    input,
+    pos
   };
 
 }
@@ -62,7 +83,7 @@ const noCompletions = {
   completionPos: null
 };
 
-export function getCompletions(data, input, pos, args) {
+export function getCompletions(data, input, args) {
   const trie = new Trie();
   const completionPos = chain(input).split(' ').flatMap(s => s.split('.')).slice(0, -1).join(' ').size().value() + 1;
 

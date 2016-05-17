@@ -39,13 +39,20 @@ export default function buffer(data, args, width, height, rawKeypresses) {
     }
 
     if (includes(['completion.next', 'completion.previous'], action) && !isEmpty(acc.completions)) {
-      const { selectedCompletionIndex, input, preCompletionInput } = getCompletionState(action, acc);
+      const {
+        input,
+        pos,
+        preCompletionInput,
+        preCompletionPos,
+        selectedCompletionIndex
+      } = getCompletionState(action, acc);
       const { result } = evalWithInput(data, input, acc.pos);
       return assign(acc, {
         selectedCompletionIndex,
         preCompletionInput,
+        preCompletionPos,
         input,
-        pos: input.length,
+        pos,
         output: !isNil(result) ? getVisible(stringify(result, width), width, height) : acc.output,
         json: isNil(result) ? acc.json : result,
         valid: !isNil(result)
@@ -209,17 +216,26 @@ function evalWithInput(data, input, pos) {
   }
 
   const args = parseArgs(parse(input));
+  const partialInput = input.slice(0, pos);
+  const partialArgs = parseArgs(parse(partialInput));
+
+  const {
+    completions,
+    completionPos
+  } = getCompletions(data, partialInput, partialArgs);
 
   try {
-    return assign({
-      result: evalChain(data, args)
-    }, getCompletions(data, input, pos, args));
-  } catch(e) {/* */}
-
-  return {
-    result: null,
-    completions: [],
-    completionPos: null
-  };
+    return {
+      result: evalChain(data, args),
+      completions,
+      completionPos
+    };
+  } catch(e) {
+    return {
+      result: null,
+      completions,
+      completionPos
+    };
+  }
 
 }
