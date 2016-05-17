@@ -65,11 +65,13 @@ function formatCompletions(completions, selectedCompletionIndex, height) {
   if (isEmpty(completions)) {
     return [];
   }
+
+  const scrollPos = Math.max(selectedCompletionIndex - height + 1, 0);
   const width = maxBy(completions, size).length;
   return chain(completions)
-  .slice(0, height)
   .map(line => `${padEnd(line, width)} `)
   .map((line, i) => i === selectedCompletionIndex ? inverse(line) : black.bgWhite(line))
+  .slice(scrollPos, scrollPos + height)
   .value();
 }
 
