@@ -19,7 +19,7 @@ import strip from 'strip-ansi';
 import * as actions from './actions.js';
 import commands from './commands';
 import { getCompletions, getCompletionState } from './completion.js';
-import { parseArgs, validateArgs } from '../parseArgs.js';
+import { parseArgs } from '../parseArgs.js';
 import { evalChain } from '../eval.js';
 
 export default function buffer(data, args, width, height, rawKeypresses) {
@@ -211,30 +211,10 @@ function evalWithInput(data, input, pos) {
   const args = parseArgs(parse(input));
 
   try {
-    validateArgs(args);
-    const result = evalChain(data, args);
-    if (!isNil(result)) {
-      return {
-        result,
-        completions: [],
-        completionPos: null
-      };
-    }
-  } catch(e) {
-    if (e.message !== 'Error: not enough arguments') {
-      return {
-        result: null,
-        completions: [],
-        completionPos: null
-      };
-    }
-  }
-
-  try {
     return assign({
-      result: null
+      result: evalChain(data, args)
     }, getCompletions(data, input, pos, args));
-  } catch(e) {/* */ }
+  } catch(e) {/* */}
 
   return {
     result: null,

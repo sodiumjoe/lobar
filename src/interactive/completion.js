@@ -1,28 +1,31 @@
 import {
   chain,
   dropRight,
+  first,
   forEach,
   includes,
+  isArray,
   isEmpty,
+  isPlainObject,
   keys,
   last
 } from 'lodash';
 import Trie from 'triejs';
 import { evalChain } from '../eval.js';
-
+import { ARRAY, ARRAY_MATCHES, OBJECT, OBJECT_MATCHES } from './constants.js';
 
 export function getCompletionState(action, state) {
 
   if (action === 'completion.next' && !isEmpty(state.completions)) {
     const selectedCompletionIndex = state.selectedCompletionIndex === null
-    ? 0
-    : state.selectedCompletionIndex === state.completions.length - 1
-    ? null
-    : state.selectedCompletionIndex + 1;
+      ? 0
+      : state.selectedCompletionIndex === state.completions.length - 1
+        ? null
+        : state.selectedCompletionIndex + 1;
 
     const input = state.selectedCompletionIndex === state.completions.length - 1
-    ? state.preCompletionInput
-    : state.input.slice(0, state.completionPos) + state.completions[selectedCompletionIndex];
+      ? state.preCompletionInput
+      : state.input.slice(0, state.completionPos) + state.completions[selectedCompletionIndex];
 
     const preCompletionInput = state.selectedCompletionIndex === null ? state.input : state.preCompletionInput;
 
@@ -41,8 +44,8 @@ export function getCompletionState(action, state) {
       : state.selectedCompletionIndex - 1;
 
   const input = state.selectedCompletionIndex === 0
-  ? state.preCompletionInput
-  : state.input.slice(0, state.completionPos) + state.completions[selectedCompletionIndex];
+    ? state.preCompletionInput
+    : state.input.slice(0, state.completionPos) + state.completions[selectedCompletionIndex];
 
   const preCompletionInput = state.selectedCompletionIndex === null ? state.input : state.preCompletionInput;
 
@@ -54,32 +57,109 @@ export function getCompletionState(action, state) {
 
 }
 
+const noCompletions = {
+  completions: [],
+  completionPos: null
+};
+
 export function getCompletions(data, input, pos, args) {
   const trie = new Trie();
+  const completionPos = chain(input).split(' ').flatMap(s => s.split('.')).slice(0, -1).join(' ').size().value() + 1;
+
   if (args.length % 2 === 0) {
+
+    // infer possible next method
+    if (last(input) === ' ') {
+      const result = evalChain(data, args);
+      if (isPlainObject(result)) {
+        return {
+          completions: OBJECT,
+          completionPos
+        };
+      }
+      if (isArray(result)) {
+        return {
+          completions: ARRAY,
+          completionPos
+        };
+      }
+      return noCompletions;
+    }
+
+    // infer rest of current arg
     const [currentMethod, currentArg] = args.slice(-2);
+    const result = evalChain(data, dropRight(args, 2));
     if (currentMethod === 'get') {
-      const result = evalChain(data, dropRight(args));
-      const resultKeys = keys(result);
-      forEach(resultKeys, key => trie.add(key, key));
+      forEach(keys(result), key => trie.add(key, key));
+      const completions = trie.find(currentArg);
+      if (completions.length === 1 && first(completions) === currentArg) {
+        return noCompletions;
+      }
       return {
-        completions: trie.find(currentArg),
-        completionPos: chain(input).split(' ').flatMap(s => s.split('.')).slice(0, -1).join(' ').size().value() + 1
+        completions,
+        completionPos
       };
     }
-  }
-  if (includes(['.', ' '], last(input))) {
-    const currentMethod = last(args);
-    if (currentMethod === 'get' || last(input) === '.') {
-      const result = evalChain(data, args);
+    if (isArray(result) && includes(ARRAY_MATCHES, currentMethod)) {
+      const item = first(result);
+      if (isPlainObject(item)) {
+        forEach(keys(item), key => trie.add(key, key));
+        return {
+          completions: trie.find(currentArg),
+          completionPos
+        };
+      }
+    }
+    if (isPlainObject(result) && includes(OBJECT_MATCHES, currentMethod)) {
       return {
         completions: keys(result),
-        completionPos: input.length
+        completionPos
       };
     }
+    return noCompletions;
+  }
+
+  const result = evalChain(data, dropRight(args));
+  const currentMethod = last(args);
+
+  // infer `get` path
+  if (last(input) === '.' || (currentMethod === 'get' && last(input) === ' ')) {
+    return {
+      completions: keys(result),
+      completionPos: input.length
+    };
+  }
+
+  // infer next arg
+  if (last(input) === ' ') {
+    if (isArray(result) && includes(ARRAY_MATCHES, currentMethod)) {
+      const item = first(result);
+      if (isPlainObject(item)) {
+        return {
+          completions: keys(item),
+          completionPos
+        };
+      }
+    }
+    if (isPlainObject(result) && includes(OBJECT_MATCHES, currentMethod)) {
+      return {
+        completions: keys(result),
+        completionPos
+      };
+    }
+    return noCompletions;
+  }
+
+  // infer rest of method
+  if (isPlainObject(result)) {
+    forEach(OBJECT, method => trie.add(method, method));
+  }
+  if (isArray(result)) {
+    forEach(ARRAY, method => trie.add(method, method));
   }
   return {
-    completions: [],
-    completionPos: null
+    completions: trie.find(last(args)),
+    completionPos
   };
+
 }
