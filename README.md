@@ -57,7 +57,7 @@ $ echo '{"foo": {"bar": "baz"}}' | lbr get foo.bar
 ### interactive mode
 
 ```shell
-$ cat package.json | lbr -i
+$ curl https://registry.npmjs.com/lobar | lbr -i
 ```
 
 ![interactive mode gif](https://raw.githubusercontent.com/sodiumjoe/lobar/master/lobar.gif)
