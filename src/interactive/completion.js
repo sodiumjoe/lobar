@@ -14,13 +14,13 @@ import Trie from 'triejs';
 import { evalChain } from '../eval.js';
 import { ARRAY, ARRAY_MATCHES, OBJECT, OBJECT_MATCHES } from './constants.js';
 
-export function getCompletionState(action, state) {
+export function getCompletionState(direction, state) {
 
   if (isEmpty(state.completions)) {
     return state;
   }
 
-  if (action === 'completion.next') {
+  if (direction === 'next') {
 
     const selectedCompletionIndex = state.selectedCompletionIndex === null
       ? 0

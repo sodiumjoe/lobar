@@ -1,7 +1,6 @@
 import {
   chain,
   forEach,
-  identity,
   isEmpty,
   maxBy,
   padEnd,
@@ -23,14 +22,17 @@ const { fromEvent } = Observable;
 
 export default function interactive(data, args, cb) {
 
-  clearScreen(stdout);
+  clearScreen();
 
   const keypresses = fromEvent(stdin, 'data').map(data => decode(data)).share();
 
   buffer(data, args, stdout.columns, stdout.rows - 1, keypresses)
+  .map(state => {
+    state.error && handleUncaughtException(state);
+    return state;
+  })
   .do(({ mode, pos, input, output, valid, completions, completionPos, selectedCompletionIndex }) => {
-    // hide cursor
-    stdout.write('\x1b[?25l');
+    hideCursor();
     readline.clearLine(stdout, 0);
     readline.cursorTo(stdout, 0, 0);
     stdout.write(`${valid ? input : red(input)}\n`);
@@ -42,12 +44,11 @@ export default function interactive(data, args, cb) {
       });
     }
     readline.cursorTo(stdout, pos, 0);
-    // show cursor
-    stdout.write('\x1b[?25h');
+    showCursor();
   })
   .takeLast(1)
   .subscribe(({ json }) => {
-    clearScreen(stdout);
+    clearScreen();
     readline.cursorTo(stdout, 0, 0);
     return cb(json);
   });
@@ -70,20 +71,31 @@ function formatCompletions(completions, selectedCompletionIndex, height) {
   .value();
 }
 
-function handleUncaughtException(stdout, state, e) {
-  clearScreen(stdout);
+function handleUncaughtException({ state: { input }, command, error }) {
+  clearScreen();
+  readline.cursorTo(stdout, 0, 0);
   console.log(stripIndent`
     Uncaught exception
-    last state:
-      ${JSON.stringify(state)}
-    stack: ${e.stack}
+    last input: ${JSON.stringify(input)}
+    command: ${JSON.stringify(command)}
+    stack:
+    ${error.stack}
 
-    Please make a bug report to: https://github.com/sodiumjoe/lobar/issues
-    with the above information and the action that triggered the error. Thanks!
+    Please make a bug report to: https://github.com/sodiumjoe/lobar/issues with the
+    above information and the input JSON that triggered the error. Thanks!
   `);
+  showCursor();
   process.exit(1);
 }
 
-function clearScreen(stdout) {
+function clearScreen() {
   stdout.write('\u001b[2J');
+}
+
+function hideCursor() {
+  stdout.write('\x1b[?25l');
+}
+
+function showCursor() {
+  stdout.write('\x1b[?25h');
 }

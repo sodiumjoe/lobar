@@ -21,10 +21,7 @@ export default function commands(rawKeypresses) {
   const undo = () => ({ action: 'undo' });
   const redo = () => ({ action: 'redo' });
   const copy = () => ({ action: 'copy' });
-  const completion = {
-    next: () => ({ action: 'completion.next' }),
-    prev: () => ({ action: 'completion.previous' })
-  };
+  const complete = key => ({ action: 'completion', key });
   const changeMode = mode => ({ action: 'mode', mode });
 
   const insertMode = () => create(obs => {
@@ -37,10 +34,10 @@ export default function commands(rawKeypresses) {
         return obs.complete();
       }
       if ((name === 'tab' && shift) || (name === 'p' && ctrl)) {
-        return obs.next(completion.prev());
+        return obs.next(complete('previous'));
       }
       if ((name === 'tab') || (name === 'n' && ctrl)) {
-        return obs.next(completion.next());
+        return obs.next(complete('next'));
       }
       if (name === 'backspace') {
         return obs.next(del());

@@ -29,107 +29,127 @@ export default function buffer(data, args, width, height, rawKeypresses) {
   const initialJson = isNil(initialResult) ? data : initialResult;
   const initialOutput = getVisible(stringify(initialJson, width), width, height);
 
-  return commands(rawKeypresses).scan((acc, command) => {
+  return commands(rawKeypresses).scan((state, command) => {
 
-    const { action, key } = command;
+    try {
 
-    if (action === 'copy') {
-      cp(acc.input);
-      return acc;
-    }
+      const { action, key, mode = state.mode } = command;
 
-    if (action === 'mode') {
-      return assign(acc, { mode: command.mode });
-    }
+      if (action === 'copy') {
+        cp(state.input);
+        return state;
+      }
 
-    if (includes(['completion.next', 'completion.previous'], action) && !isEmpty(acc.completions)) {
-      const {
-        input,
-        pos,
-        preCompletionInput,
-        preCompletionPos,
-        selectedCompletionIndex
-      } = getCompletionState(action, acc);
-      const { result } = evalWithInput(data, input, acc.pos);
-      return assign(acc, {
-        selectedCompletionIndex,
-        preCompletionInput,
-        preCompletionPos,
-        input,
-        pos,
-        output: !isNil(result) ? getVisible(stringify(result, width), width, height) : acc.output,
-        json: isNil(result) ? acc.json : result,
-        valid: !isNil(result)
-      });
-    }
+      if (action === 'mode') {
+        if (mode === 'insert' && state.mode === 'normal') {
+          return assign(state, {
+            undos: state.undos.concat(pick(state, ['input', 'output', 'json', 'valid', 'pos']))
+          });
+        }
+        return assign(state, { mode });
+      }
 
-    if (action === 'scroll') {
-      const scroll = scrollAction(acc.scroll, key, acc.json, height, width);
-      if (scroll !== acc.scroll) {
-        return assign(acc, {
-          action,
-          scroll,
-          output: getVisible(stringify(acc.json, width), width, height, scroll)
+      if (action === 'completion' && !isEmpty(state.completions)) {
+        const {
+          input,
+          pos,
+          preCompletionInput,
+          preCompletionPos,
+          selectedCompletionIndex
+        } = getCompletionState(key, state);
+        const { result } = evalWithInput(data, input, state.pos);
+        return assign(state, {
+          selectedCompletionIndex,
+          preCompletionInput,
+          preCompletionPos,
+          input,
+          pos,
+          undos: state.undos.concat(pick(state, ['input', 'output', 'json', 'valid', 'pos'])),
+          output: !isNil(result) ? getVisible(stringify(result, width), width, height) : state.output,
+          json: isNil(result) ? state.json : result,
+          valid: !isNil(result)
         });
       }
-      return acc;
-    }
 
-    if (action === 'redo') {
-      if (isEmpty(acc.redos)) {
-        return acc;
+      if (action === 'scroll') {
+        const scroll = scrollAction(state.scroll, key, state.json, height, width);
+        if (scroll !== state.scroll) {
+          return assign(state, {
+            action,
+            scroll,
+            output: getVisible(stringify(state.json, width), width, height, scroll)
+          });
+        }
+        return state;
       }
-      const nextState = last(acc.redos);
-      return assign(acc, nextState, {
-        undos: acc.undos.concat(nextState),
-        redos: dropRight(acc.redos),
-        scroll: 0
-      });
-    }
 
-    if (action === 'undo') {
-      if (isEmpty(acc.undos)) {
-        return acc;
+      if (action === 'redo') {
+        if (isEmpty(state.redos)) {
+          return state;
+        }
+        const nextState = last(state.redos);
+        return assign(state, nextState, {
+          undos: state.undos.concat(pick(state, ['input', 'output', 'json', 'valid', 'pos'])),
+          redos: dropRight(state.redos),
+          scroll: 0
+        });
       }
-      const lastState = last(acc.undos);
-      return assign(acc, lastState, {
-        undos: dropRight(acc.undos),
-        redos: acc.redos.concat(pick(acc, ['input', 'output', 'json', 'valid', 'pos'])),
-        scroll: 0
-      });
-    }
 
-    const {
-      pos,
-      input
-    } = actions[action](assign({}, acc, command));
+      if (action === 'undo') {
+        if (isEmpty(state.undos)) {
+          return state;
+        }
+        const lastState = last(state.undos);
+        return assign(state, lastState, {
+          undos: dropRight(state.undos),
+          redos: state.redos.concat(pick(state, ['input', 'output', 'json', 'valid', 'pos'])),
+          scroll: 0
+        });
+      }
 
-    if (input !== acc.input) {
-
-      const { result, completions, completionPos } = evalWithInput(data, input, pos);
-
-      return assign(acc, {
-        completions,
-        completionPos,
-        selectedCompletionIndex: null,
-        preCompletionInput: null,
+      const {
         pos,
-        input,
-        output: !isNil(result) ? getVisible(stringify(result, width), width, height) : acc.output,
-        json: isNil(result) ? acc.json : result,
-        valid: !isNil(result),
-        scroll: 0,
-        undos: acc.undos.concat(pick(acc, ['input', 'output', 'json', 'valid', 'pos'])),
-        redos: []
-      });
+        input
+      } = actions[action](assign({}, state, command));
 
+      if (input !== state.input) {
+
+        const lastState = pick(state, ['input', 'output', 'json', 'valid', 'pos']);
+        const { result, completions, completionPos } = evalWithInput(data, input, pos);
+        const undos = action === 'insert'
+          ? state.undos
+          : state.undos.concat(lastState);
+
+        return assign(state, {
+          completions,
+          completionPos,
+          selectedCompletionIndex: null,
+          preCompletionInput: null,
+          pos,
+          input,
+          output: !isNil(result) ? getVisible(stringify(result, width), width, height) : state.output,
+          json: isNil(result) ? state.json : result,
+          valid: !isNil(result),
+          scroll: 0,
+          undos,
+          redos: []
+        });
+
+      }
+
+      if (pos !== state.pos) {
+        return assign(state, { pos });
+      }
+
+      return state;
+
+    } catch(error) {
+      return {
+        state,
+        command,
+        error
+      };
     }
-
-    if (pos !== acc.pos) {
-      return assign(acc, { pos });
-    }
-
-    return acc;
 
   }, {
     completions,
@@ -137,7 +157,7 @@ export default function buffer(data, args, width, height, rawKeypresses) {
     selectedCompletionIndex: null,
     input: initialInput,
     json: initialJson,
-    mode: 'insert',
+    mode: 'normal',
     output: initialOutput,
     pos: initialInput.length,
     redos: [],
@@ -151,7 +171,7 @@ export default function buffer(data, args, width, height, rawKeypresses) {
     selectedCompletionIndex: null,
     input: initialInput,
     json: initialJson,
-    mode: 'insert',
+    mode: 'normal',
     output: initialOutput,
     pos: initialInput.length,
     redos: [],
