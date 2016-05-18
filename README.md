@@ -4,26 +4,32 @@ A thin shell wrapper for [lodash.chain()](https://lodash.com/).
 
 ## install
 
-```
+```shell
 > npm install -g lobar
 ```
 
 ## usage
 
-```
+```shell
 > lbr -h
 
 Usage: lbr <JSON> <method> <arg> [method arg, ...] [options]
 
 Options:
-  -v, --verbose      verbosity level                                     [count]
-  -p, --prettyPrint  pretty print output                               [boolean]
-  -h, --help         Show help                                         [boolean]
+  -d, --data         <required> input json  [string]
+  -f, --filename     <required> input json file  [string]
+  -v, --verbose      verbosity level  [count]
+  -p, --prettyPrint  pretty print output  [boolean]
+  -i, --interactive  interactive mode  [boolean]
+  -h, --help         Show help  [boolean]
+  -V, --version      Show version number  [boolean]
 
 Examples:
-  lbr '["foo"]' map upperCase"  upperCase array elements
-
+  lbr -d '["foo"]' map upperCase       ["FOO"]
+  echo '{"foo": "bar"}' | lbr get foo  "bar"
+  echo '{"foo": "bar"}' | lbr .foo     "bar"
 ```
+
 ### pipe
 
 ```shell
@@ -65,6 +71,12 @@ $ curl https://registry.npmjs.com/lobar | lbr -i
 #### vi keybindings
 
 Interactive mode has basic vi keybindings. It starts in `insert` mode.
+
+##### autocompletion
+
+In insert mode, lobar will try to infer methods or argument from method/arg
+position and evaluated JSON at the current cursor position. `<Tab>`/`<S-Tab>` or
+`<C-n>`/`<C-p>` to navigate the completion list.
 
 ##### normal mode
 
@@ -119,3 +131,4 @@ generally enough for what I want to do at the command line.
   - history
   - commands:
     - R
+  - input prompt symbol
