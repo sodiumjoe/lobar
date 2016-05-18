@@ -1,6 +1,7 @@
 import _, {
   assign,
   chain,
+  includes,
   isNull,
   reduce
 } from 'lodash';
@@ -19,15 +20,17 @@ export function evalChain(data, args, verbose) {
 
   return reduce(pairs, (chainObj, [method, arg]) => {
 
-    let parsedArg;
-
-    try {
-      parsedArg = evalWith(arg, lodashContext);
-    } catch(e) {
-      parsedArg = arg;
+    if (includes(['name', 'VERSION', 'arguments', 'apply', 'call'], arg)) {
+      return chainObj[method](arg);
     }
 
-    return chainObj[method](parsedArg);
+    try {
+      const evaluatedArg = evalWith(arg, lodashContext);
+      return chainObj[method](evaluatedArg);
+    } catch(e) {
+      return chainObj[method](arg);
+    }
+
 
   }, chain(data)).value();
 
