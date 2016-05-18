@@ -173,7 +173,7 @@ export function del({ pos, input, key, meta }) {
   if (includes(['i', 'a'], key)) {
     if (meta === 'word') {
       if (input[pos].match(delimiterRegex)) {
-        return del(pos, input, 'l');
+        return del({ pos, input, key: 'l' });
       }
       const begin = beginWordPos(pos + 1, input);
       const end = endWordPos(pos - 1, input) + 1;
@@ -216,7 +216,7 @@ export function del({ pos, input, key, meta }) {
     return { pos, input };
   }
   if (key === 'h') {
-    return del(pos, input);
+    return del({ pos, input });
   }
   if (key === 'l') {
     return {

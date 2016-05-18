@@ -28,24 +28,19 @@ export default function interactive(data, args, cb) {
   const keypresses = fromEvent(stdin, 'data').map(data => decode(data)).share();
 
   buffer(data, args, stdout.columns, stdout.rows - 1, keypresses)
-  .catch(identity)
-  .scan((acc, e) => {
-    if (e instanceof Error) {
-      handleUncaughtException(stdout, acc, e);
-    }
-    return e;
-  })
-  .do(({ pos, input, output, valid, completions, completionPos, selectedCompletionIndex }) => {
+  .do(({ mode, pos, input, output, valid, completions, completionPos, selectedCompletionIndex }) => {
     // hide cursor
     stdout.write('\x1b[?25l');
     readline.clearLine(stdout, 0);
     readline.cursorTo(stdout, 0, 0);
     stdout.write(`${valid ? input : red(input)}\n`);
     stdout.write(`${output}`);
-    forEach(formatCompletions(completions, selectedCompletionIndex, stdout.rows - 1), (completion, i) => {
-      readline.cursorTo(stdout, completionPos, i + 1);
-      stdout.write(completion);
-    });
+    if (mode === 'insert') {
+      forEach(formatCompletions(completions, selectedCompletionIndex, stdout.rows - 1), (completion, i) => {
+        readline.cursorTo(stdout, completionPos, i + 1);
+        stdout.write(completion);
+      });
+    }
     readline.cursorTo(stdout, pos, 0);
     // show cursor
     stdout.write('\x1b[?25h');

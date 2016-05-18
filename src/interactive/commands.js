@@ -25,18 +25,21 @@ export default function commands(rawKeypresses) {
     next: () => ({ action: 'completion.next' }),
     prev: () => ({ action: 'completion.previous' })
   };
+  const changeMode = mode => ({ action: 'mode', mode });
 
   const insertMode = () => create(obs => {
+    obs.next(changeMode('insert'));
     keypresses.subscribe(key => {
       const { name, ctrl, meta, shift, sequence } = key;
       if (name === 'escape') {
         obs.next(move());
+        obs.next(changeMode('normal'));
         return obs.complete();
       }
-      if (name === 'tab' && shift) {
+      if ((name === 'tab' && shift) || (name === 'p' && ctrl)) {
         return obs.next(completion.prev());
       }
-      if (name === 'tab') {
+      if ((name === 'tab') || (name === 'n' && ctrl)) {
         return obs.next(completion.next());
       }
       if (name === 'backspace') {
@@ -76,7 +79,7 @@ export default function commands(rawKeypresses) {
           return of(move());
         }
         if (meta === 'w') {
-          return of(del(name, 'word'), move());
+          return of(del(name, 'word'));
         }
         if (includes(['{', '}', '(', ')', '[', ']', '\'', '"'], meta)) {
           return of(del(name, meta));
@@ -149,7 +152,7 @@ export default function commands(rawKeypresses) {
     }
 
     if (name === 'x') {
-      return of(move('append'), del(), move());
+      return of(move('append'), del(), move(), changeMode('normal'));
     }
     if (name === 'i' && shift) {
       return of(move('0')).concat(insertMode());
@@ -175,6 +178,7 @@ export default function commands(rawKeypresses) {
           const { name } = key;
           if (name === 'escape') {
             obs.next(move());
+            obs.next(changeMode('normal'));
             return obs.complete();
           }
           return obs.next(key);
@@ -189,7 +193,7 @@ export default function commands(rawKeypresses) {
     if (name === 't' && shift) {
       return switchMapOnce(keypresses, ({ name, sequence }) => {
         if (name === 'escape') {
-          return of(move());
+          return of(move(), changeMode('normal'));
         }
         return of(move('Til', sequence));
       });
@@ -197,7 +201,7 @@ export default function commands(rawKeypresses) {
     if (name === 't') {
       return switchMapOnce(keypresses, ({ name, sequence }) => {
         if (name === 'escape') {
-          return of(move());
+          return of(move(), changeMode('normal'));
         }
         return of(move('til', sequence));
       });
@@ -205,7 +209,7 @@ export default function commands(rawKeypresses) {
     if (name === 'f' && shift) {
       return switchMapOnce(keypresses, ({ name, sequence }) => {
         if (name === 'escape') {
-          return of(move());
+          return of(move(), changeMode('normal'));
         }
         return of(move('For', sequence));
       });
@@ -213,7 +217,7 @@ export default function commands(rawKeypresses) {
     if (name === 'f') {
       return switchMapOnce(keypresses, ({ name, sequence }) => {
         if (name === 'escape') {
-          return of(move());
+          return of(move(), changeMode('normal'));
         }
         return of(move('for', sequence));
       });

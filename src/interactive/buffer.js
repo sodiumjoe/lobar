@@ -38,6 +38,10 @@ export default function buffer(data, args, width, height, rawKeypresses) {
       return acc;
     }
 
+    if (action === 'mode') {
+      return assign(acc, { mode: command.mode });
+    }
+
     if (includes(['completion.next', 'completion.previous'], action) && !isEmpty(acc.completions)) {
       const {
         input,
@@ -133,6 +137,7 @@ export default function buffer(data, args, width, height, rawKeypresses) {
     selectedCompletionIndex: null,
     input: initialInput,
     json: initialJson,
+    mode: 'insert',
     output: initialOutput,
     pos: initialInput.length,
     redos: [],
@@ -146,6 +151,7 @@ export default function buffer(data, args, width, height, rawKeypresses) {
     selectedCompletionIndex: null,
     input: initialInput,
     json: initialJson,
+    mode: 'insert',
     output: initialOutput,
     pos: initialInput.length,
     redos: [],

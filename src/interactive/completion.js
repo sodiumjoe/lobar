@@ -113,9 +113,6 @@ export function getCompletions(data, input, args) {
     if (currentMethod === 'get') {
       forEach(keys(result), key => trie.add(key, key));
       const completions = trie.find(currentArg);
-      if (completions.length === 1 && first(completions) === currentArg) {
-        return noCompletions;
-      }
       return {
         completions,
         completionPos
