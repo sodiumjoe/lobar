@@ -43,6 +43,7 @@ export default function buffer(data, args, width, height, rawKeypresses) {
       if (action === 'mode') {
         if (mode === 'insert' && state.mode === 'normal') {
           return assign(state, {
+            mode,
             undos: state.undos.concat(pick(state, ['input', 'output', 'json', 'valid', 'pos']))
           });
         }
@@ -245,10 +246,16 @@ function evalWithInput(data, input, pos) {
   const partialInput = input.slice(0, pos);
   const partialArgs = parseArgs(parse(partialInput));
 
-  const {
-    completions,
-    completionPos
-  } = getCompletions(data, partialInput, partialArgs);
+  let completions, completionPos;
+
+  try{
+    const completionState = getCompletions(data, partialInput, partialArgs);
+    completions = completionState.completions;
+    completionPos = completionState.completionPos;
+  } catch(e) {
+    completions = [];
+    completionPos = null;
+  }
 
   try {
     return {
