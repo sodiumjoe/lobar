@@ -85,7 +85,10 @@ const noCompletions = {
 
 export function getCompletions(data, input, args) {
   const trie = new Trie();
-  const completionPos = chain(input).split(' ').flatMap(s => s.split('.')).slice(0, -1).join(' ').size().value() + 1;
+  const completionPos = chain(input)
+    .findLastIndex(ch => includes([' ', '.'], ch))
+    .thru(i => i === -1 ? 0 : i + 1)
+    .value();
 
   if (args.length % 2 === 0) {
 
