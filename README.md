@@ -131,4 +131,4 @@ generally enough for what I want to do at the command line.
   - history
   - commands:
     - R
-  - input prompt symbol
+  - tests

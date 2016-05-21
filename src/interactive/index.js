@@ -35,7 +35,7 @@ export default function interactive(data, args, cb) {
   .do(({ mode, pos, input, output, valid, completions, completionPos, selectedCompletionIndex }) => {
     hideCursor();
     readline.cursorTo(stdout, 0, 0);
-    stdout.write(`${valid ? input : red(input)}`);
+    stdout.write(`> ${valid ? input : red(input)}`);
     readline.clearLine(stdout, 1);
     const outputLines = output.split('\n');
     forEach(outputLines, line => {
@@ -51,11 +51,11 @@ export default function interactive(data, args, cb) {
     });
     if (mode === 'insert') {
       forEach(formatCompletions(completions, selectedCompletionIndex, stdout.rows - 1), (completion, i) => {
-        readline.cursorTo(stdout, completionPos, i + 1);
+        readline.cursorTo(stdout, completionPos + 1, i + 1);
         stdout.write(completion);
       });
     }
-    readline.cursorTo(stdout, pos, 0);
+    readline.cursorTo(stdout, pos + 2, 0);
     showCursor();
   })
   .takeLast(1)
@@ -77,7 +77,7 @@ function formatCompletions(completions, selectedCompletionIndex, height) {
   const scrollPos = Math.max(selectedCompletionIndex - height + 1, 0);
   const width = maxBy(completions, size).length;
   return chain(completions)
-  .map(line => `${padEnd(line, width)} `)
+  .map(line => ` ${padEnd(line, width)} `)
   .map((line, i) => i === selectedCompletionIndex ? inverse(line) : black.bgWhite(line))
   .slice(scrollPos, scrollPos + height)
   .value();
