@@ -2,20 +2,17 @@ import {
   assign,
   chain,
   dropRight,
-  fill,
   includes,
   isEmpty,
   isNil,
   last,
   map,
   pick,
-  repeat,
   some
 } from 'lodash';
 import { copy as cp } from 'copy-paste';
 import { parse } from 'shell-quote';
 import sfy from 'maquillage';
-import strip from 'strip-ansi';
 import * as actions from './actions.js';
 import commands from './commands';
 import { getCompletions, getCompletionState } from './completion.js';
@@ -219,15 +216,9 @@ const parsePreserveQuotes = args => map(args, arg => {
 });
 
 function getVisible(str, width, height, n = 0) {
-  const blank = fill(Array(height), repeat(' ', width));
   const lines = str.split('\n');
   return chain(lines)
   .slice(n, n + height)
-  // pad end of each line
-  .map(line => `${line}${repeat(' ', width - strip(line).length)}`)
-  // clear under end of input if it doesn't fill height of terminal
-  .concat(blank)
-  .slice(0, height)
   .join('\n')
   .value();
 }

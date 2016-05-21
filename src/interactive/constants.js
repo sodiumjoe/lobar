@@ -161,7 +161,6 @@ export const OBJECT = [
   'omitBy',
   'pick',
   'pickBy',
-  'toPairs',
   'transform',
   'values'
 ].concat(COLLECTION);

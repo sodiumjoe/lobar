@@ -37,7 +37,6 @@
     "maquillage": "0.0.2",
     "rxjs": "^5.0.0-beta.7",
     "shell-quote": "^1.6.0",
-    "strip-ansi": "^3.0.1",
     "triejs": "^0.1.5",
     "yargs": "^4.6.0"
   },

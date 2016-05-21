@@ -4,7 +4,8 @@ import {
   isEmpty,
   maxBy,
   padEnd,
-  size
+  size,
+  times
 } from 'lodash';
 import decode from 'decode-keypress';
 import readline from 'readline';
@@ -33,10 +34,21 @@ export default function interactive(data, args, cb) {
   })
   .do(({ mode, pos, input, output, valid, completions, completionPos, selectedCompletionIndex }) => {
     hideCursor();
-    readline.clearLine(stdout, 0);
     readline.cursorTo(stdout, 0, 0);
-    stdout.write(`${valid ? input : red(input)}\n`);
-    stdout.write(`${output}`);
+    stdout.write(`${valid ? input : red(input)}`);
+    readline.clearLine(stdout, 1);
+    const outputLines = output.split('\n');
+    forEach(outputLines, line => {
+      stdout.write('\n');
+      readline.clearLine(stdout, 0);
+      stdout.write(`${line}`);
+      readline.clearLine(stdout, 1);
+    });
+    // clear lines after end of output
+    times(stdout.rows - outputLines.length - 2, () => {
+      stdout.write('\n');
+      readline.clearLine(stdout, 0);
+    });
     if (mode === 'insert') {
       forEach(formatCompletions(completions, selectedCompletionIndex, stdout.rows - 1), (completion, i) => {
         readline.cursorTo(stdout, completionPos, i + 1);
