@@ -131,11 +131,31 @@ export function getCompletions(data, input, args) {
         };
       }
     }
-    if (isPlainObject(result) && includes(OBJECT_MATCHES, currentMethod)) {
-      return {
-        completions: keys(result),
-        completionPos
-      };
+    if (isPlainObject(result)) {
+      if (includes(OBJECT_MATCHES, currentMethod)) {
+        forEach(keys(result), key => trie.add(key, key));
+        return {
+          completions: trie.find(currentArg),
+          completionPos
+        };
+      }
+      if (currentMethod === 'mapValues') {
+        const firstValue = chain(result).values().first().value();
+        forEach(keys(firstValue), key => trie.add(key, key));
+        if (isPlainObject(firstValue)) {
+          return {
+            completions: trie.find(currentArg),
+            completionPos
+          };
+        }
+        if (isArray(firstValue)) {
+          forEach(ARRAY, key => trie.add(key, key));
+          return {
+            completions: trie.find(currentArg),
+            completionPos
+          };
+        }
+      }
     }
     return noCompletions;
   }
@@ -162,11 +182,28 @@ export function getCompletions(data, input, args) {
         };
       }
     }
-    if (isPlainObject(result) && includes(OBJECT_MATCHES, currentMethod)) {
-      return {
-        completions: keys(result),
-        completionPos
-      };
+    if (isPlainObject(result)) {
+      if (includes(OBJECT_MATCHES, currentMethod)) {
+        return {
+          completions: keys(result),
+          completionPos
+        };
+      }
+      if (currentMethod === 'mapValues') {
+        const firstValue = chain(result).values().first().value();
+        if (isPlainObject(firstValue)) {
+          return {
+            completions: keys(firstValue),
+            completionPos
+          };
+        }
+        if (isArray(firstValue)) {
+          return {
+            completions: ARRAY,
+            completionPos
+          };
+        }
+      }
     }
     return noCompletions;
   }

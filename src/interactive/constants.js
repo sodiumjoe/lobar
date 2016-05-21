@@ -238,8 +238,6 @@ export const ARRAY_MATCHES = COLLECTION_MATCHES.concat([
 export const OBJECT_MATCHES = COLLECTION_MATCHES.concat([
   'findKey',
   'findLastKey',
-  'mapKeys',
-  'mapValues',
   'pick',
   'pickBy',
   'values'
