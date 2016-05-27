@@ -7,6 +7,7 @@ import parseJson from './parseJson.js';
 import { parseArgs, validateArgs } from './parseArgs.js';
 import { evalChain } from './eval.js';
 import interactive from './interactive';
+import setBlocking from './setBlocking.js';
 
 const argv = yargs
   .env('LOBAR')
@@ -59,6 +60,7 @@ getInputs(argv, (err, inputs) => {
 
   if (argv.i) {
     return interactive(data, inputs.args, result => {
+      setBlocking();
       console.log(stringify(result, { colors: argv.p ? undefined : false }));
       process.exit(0);
     });
@@ -69,6 +71,7 @@ getInputs(argv, (err, inputs) => {
   try {
     validateArgs(args);
   } catch(e) {
+    setBlocking();
     console.error(e.message);
     yargs.showHelp();
     process.exit(1);
@@ -76,6 +79,7 @@ getInputs(argv, (err, inputs) => {
 
   const result = evalChain(data, args, argv.v);
 
+  setBlocking();
   console.log(stringify(result, { colors: argv.p ? undefined : false }));
   process.exit(0);
 
@@ -89,6 +93,7 @@ function getInputs(argv, cb) {
 
     if (process.stdin.isTTY && !argv.d && !argv.f) {
       yargs.showHelp();
+      setBlocking();
       console.error('Missing required argument: d or f');
       return process.exit();
     }

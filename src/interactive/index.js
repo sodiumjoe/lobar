@@ -18,6 +18,7 @@ import {
 import { stripIndent } from 'common-tags';
 import buffer from './buffer.js';
 import { stdin, stdout } from './tty.js';
+import setBlocking from '../setBlocking.js';
 
 const { fromEvent } = Observable;
 
@@ -97,6 +98,7 @@ function handleUncaughtException({ state: { input }, command, error }) {
     above information and the input JSON that triggered the error. Thanks!
   `);
   showCursor();
+  setBlocking();
   process.exit(1);
 }
 
