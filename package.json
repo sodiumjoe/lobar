@@ -34,7 +34,7 @@
     "copy-paste": "^1.2.0",
     "decode-keypress": "0.0.3",
     "lodash": "^4.11.1",
-    "maquillage": "0.0.2",
+    "maquillage": "0.0.4",
     "rxjs": "^5.0.0-beta.7",
     "shell-quote": "^1.6.0",
     "triejs": "^0.1.5",
