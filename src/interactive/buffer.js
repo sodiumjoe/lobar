@@ -25,6 +25,20 @@ export default function buffer(data, args, width, height, rawKeypresses) {
   const { result: initialResult, completions, completionPos } = evalWithInput(data, initialInput);
   const initialJson = isNil(initialResult) ? data : initialResult;
   const initialOutput = getVisible(stringify(initialJson, width), width, height);
+  const initialState = {
+    completions,
+    completionPos,
+    selectedCompletionIndex: null,
+    input: initialInput,
+    json: initialJson,
+    mode: 'normal',
+    output: initialOutput,
+    pos: initialInput.length,
+    redos: [],
+    scroll: 0,
+    undos: [],
+    valid: !isNil(initialResult)
+  };
 
   return commands(rawKeypresses).scan((state, command) => {
 
@@ -149,34 +163,8 @@ export default function buffer(data, args, width, height, rawKeypresses) {
       };
     }
 
-  }, {
-    completions,
-    completionPos,
-    selectedCompletionIndex: null,
-    input: initialInput,
-    json: initialJson,
-    mode: 'normal',
-    output: initialOutput,
-    pos: initialInput.length,
-    redos: [],
-    scroll: 0,
-    undos: [],
-    valid: !isNil(initialResult)
-  })
-  .startWith({
-    completions,
-    completionPos,
-    selectedCompletionIndex: null,
-    input: initialInput,
-    json: initialJson,
-    mode: 'normal',
-    output: initialOutput,
-    pos: initialInput.length,
-    redos: [],
-    scroll: 0,
-    undos: [],
-    valid: !isNil(initialResult)
-  });
+  }, initialState)
+  .startWith(initialState);
 
 }
 
