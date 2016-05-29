@@ -5,90 +5,40 @@ import {
   forEach,
   includes,
   isArray,
-  isEmpty,
   isPlainObject,
   keys,
   last
 } from 'lodash';
 import Trie from 'triejs';
+import { parse } from 'shell-quote';
+import { parseArgs } from '../parseArgs.js';
 import { evalChain } from '../eval.js';
 import { ARRAY, ARRAY_MATCHES, OBJECT, OBJECT_MATCHES } from './constants.js';
 
-export function getCompletionState(direction, state) {
-
-  if (isEmpty(state.completions)) {
-    return state;
-  }
-
-  if (direction === 'next') {
-
-    const selectedCompletionIndex = state.selectedCompletionIndex === null
-      ? 0
-      : state.selectedCompletionIndex === state.completions.length - 1
-        ? null
-        : state.selectedCompletionIndex + 1;
-
-    const input = state.selectedCompletionIndex === state.completions.length - 1
-      ? state.preCompletionInput
-      : state.input.slice(0, state.completionPos) + state.completions[selectedCompletionIndex] + state.input.slice(state.pos);
-
-    const preCompletionInput = state.selectedCompletionIndex === null ? state.input : state.preCompletionInput;
-
-    const preCompletionPos = state.selectedCompletionIndex === null ? state.pos : state.preCompletionPos;
-
-    const pos = state.selectedCompletionIndex === state.completions.length - 1
-      ? state.preCompletionPos
-      : state.completionPos + state.completions[selectedCompletionIndex].length;
-
-    return {
-      selectedCompletionIndex,
-      preCompletionInput,
-      preCompletionPos,
-      input,
-      pos
-    };
-
-  }
-
-  const selectedCompletionIndex = state.selectedCompletionIndex === null
-    ? state.completions.length - 1
-    : state.selectedCompletionIndex === 0
-      ? null
-      : state.selectedCompletionIndex - 1;
-
-  const input = state.selectedCompletionIndex === 0
-    ? state.preCompletionInput
-    : state.input.slice(0, state.completionPos) + state.completions[selectedCompletionIndex] + state.input.slice(state.pos);
-
-  const preCompletionInput = state.selectedCompletionIndex === null ? state.input : state.preCompletionInput;
-
-  const preCompletionPos = state.selectedCompletionIndex === null ? state.pos : state.preCompletionPos;
-
-  const pos = state.selectedCompletionIndex === 0
-    ? state.preCompletionPos
-    : state.completionPos + state.completions[selectedCompletionIndex].length;
-
-  return {
-    selectedCompletionIndex,
-    preCompletionInput,
-    preCompletionPos,
-    input,
-    pos
-  };
-
-}
-
 const noCompletions = {
-  completions: [],
-  completionPos: null
+  completions: []
 };
 
-export function getCompletions(data, input, args) {
+export function getCompletions(data, input, pos) {
+  const partialInput = input.slice(0, pos);
+  const args = parseArgs(parse(partialInput));
+  const {
+    completions = [],
+    completionPos = chain(input)
+      .findLastIndex(ch => includes([' ', '.'], ch))
+      .thru(i => i === -1 ? 0 : i + 1)
+      .value()
+  } = getCompletionList(data, args, partialInput);
+  const preCompletionInput = input.slice(completionPos, pos);
+  return {
+    completions: chain(preCompletionInput).concat(completions).uniq().value(),
+    completionPos
+  };
+}
+
+function getCompletionList(data, args, input) {
+
   const trie = new Trie();
-  const completionPos = chain(input)
-    .findLastIndex(ch => includes([' ', '.'], ch))
-    .thru(i => i === -1 ? 0 : i + 1)
-    .value();
 
   if (args.length % 2 === 0) {
 
@@ -97,14 +47,12 @@ export function getCompletions(data, input, args) {
       const result = evalChain(data, args);
       if (isPlainObject(result)) {
         return {
-          completions: OBJECT,
-          completionPos
+          completions: OBJECT
         };
       }
       if (isArray(result)) {
         return {
-          completions: ARRAY,
-          completionPos
+          completions: ARRAY
         };
       }
       return noCompletions;
@@ -117,8 +65,7 @@ export function getCompletions(data, input, args) {
       forEach(keys(result), key => trie.add(key, key));
       const completions = trie.find(currentArg);
       return {
-        completions,
-        completionPos
+        completions
       };
     }
     if (isArray(result) && includes(ARRAY_MATCHES, currentMethod)) {
@@ -126,8 +73,7 @@ export function getCompletions(data, input, args) {
       if (isPlainObject(item)) {
         forEach(keys(item), key => trie.add(key, key));
         return {
-          completions: trie.find(currentArg),
-          completionPos
+          completions: trie.find(currentArg)
         };
       }
     }
@@ -135,8 +81,7 @@ export function getCompletions(data, input, args) {
       if (includes(OBJECT_MATCHES, currentMethod)) {
         forEach(keys(result), key => trie.add(key, key));
         return {
-          completions: trie.find(currentArg),
-          completionPos
+          completions: trie.find(currentArg)
         };
       }
       if (currentMethod === 'mapValues') {
@@ -144,15 +89,13 @@ export function getCompletions(data, input, args) {
         forEach(keys(firstValue), key => trie.add(key, key));
         if (isPlainObject(firstValue)) {
           return {
-            completions: trie.find(currentArg),
-            completionPos
+            completions: trie.find(currentArg)
           };
         }
         if (isArray(firstValue)) {
           forEach(ARRAY, key => trie.add(key, key));
           return {
-            completions: trie.find(currentArg),
-            completionPos
+            completions: trie.find(currentArg)
           };
         }
       }
@@ -177,30 +120,26 @@ export function getCompletions(data, input, args) {
       const item = first(result);
       if (isPlainObject(item)) {
         return {
-          completions: keys(item),
-          completionPos
+          completions: keys(item)
         };
       }
     }
     if (isPlainObject(result)) {
       if (includes(OBJECT_MATCHES, currentMethod)) {
         return {
-          completions: keys(result),
-          completionPos
+          completions: keys(result)
         };
       }
       if (currentMethod === 'mapValues') {
         const firstValue = chain(result).values().first().value();
         if (isPlainObject(firstValue)) {
           return {
-            completions: keys(firstValue),
-            completionPos
+            completions: keys(firstValue)
           };
         }
         if (isArray(firstValue)) {
           return {
-            completions: ARRAY,
-            completionPos
+            completions: ARRAY
           };
         }
       }
@@ -211,13 +150,12 @@ export function getCompletions(data, input, args) {
   // infer rest of method
   if (isPlainObject(result)) {
     forEach(OBJECT, method => trie.add(method, method));
+    return { completions: trie.find(last(args)) };
   }
   if (isArray(result)) {
     forEach(ARRAY, method => trie.add(method, method));
+    return { completions: trie.find(last(args)) };
   }
-  return {
-    completions: trie.find(last(args)),
-    completionPos
-  };
+  return noCompletions;
 
 }
