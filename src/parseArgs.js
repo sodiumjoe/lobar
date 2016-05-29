@@ -4,6 +4,7 @@ import _, {
   isEmpty,
   reduce
 } from 'lodash';
+import { stripIndent } from 'common-tags';
 
 export function parseArgs(args, verbose) {
 
@@ -21,8 +22,10 @@ export function parseArgs(args, verbose) {
     return memo.concat(arg);
   }, []);
 
-  verbose && console.log(`arguments:
-${parsed}`);
+  verbose && console.log(stripIndent`
+    arguments:
+    ${parsed}`
+  );
 
   return parsed;
 

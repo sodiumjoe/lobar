@@ -127,8 +127,11 @@ generally enough for what I want to do at the command line.
 
 ## TODO
 
+* tests
 * interactive mode
+  - factor out line-editor, vim-commands
   - history
   - commands:
     - R
-  - tests
+    - V
+    - v
