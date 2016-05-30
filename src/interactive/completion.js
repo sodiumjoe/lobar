@@ -24,14 +24,14 @@ export function getCompletions(data, input, pos) {
   const args = parseArgs(parse(partialInput));
   const {
     completions = [],
-    completionPos = chain(input)
+    completionPos = chain(partialInput)
       .findLastIndex(ch => includes([' ', '.'], ch))
       .thru(i => i === -1 ? 0 : i + 1)
       .value()
   } = getCompletionList(data, args, partialInput);
   const preCompletionInput = input.slice(completionPos, pos);
   return {
-    completions: chain(preCompletionInput).concat(completions).uniq().value(),
+    completions: chain([preCompletionInput]).concat(completions).uniq().value(),
     completionPos
   };
 }
@@ -63,9 +63,8 @@ function getCompletionList(data, args, input) {
     const result = evalChain(data, dropRight(args, 2));
     if (currentMethod === 'get') {
       forEach(keys(result), key => trie.add(key, key));
-      const completions = trie.find(currentArg);
       return {
-        completions
+        completions: trie.find(currentArg) || []
       };
     }
     if (isArray(result) && includes(ARRAY_MATCHES, currentMethod)) {
@@ -73,7 +72,7 @@ function getCompletionList(data, args, input) {
       if (isPlainObject(item)) {
         forEach(keys(item), key => trie.add(key, key));
         return {
-          completions: trie.find(currentArg)
+          completions: trie.find(currentArg) || []
         };
       }
     }
@@ -81,7 +80,7 @@ function getCompletionList(data, args, input) {
       if (includes(OBJECT_MATCHES, currentMethod)) {
         forEach(keys(result), key => trie.add(key, key));
         return {
-          completions: trie.find(currentArg)
+          completions: trie.find(currentArg) || []
         };
       }
       if (currentMethod === 'mapValues') {
@@ -89,13 +88,13 @@ function getCompletionList(data, args, input) {
         forEach(keys(firstValue), key => trie.add(key, key));
         if (isPlainObject(firstValue)) {
           return {
-            completions: trie.find(currentArg)
+            completions: trie.find(currentArg) || []
           };
         }
         if (isArray(firstValue)) {
           forEach(ARRAY, key => trie.add(key, key));
           return {
-            completions: trie.find(currentArg)
+            completions: trie.find(currentArg) || []
           };
         }
       }
@@ -150,11 +149,15 @@ function getCompletionList(data, args, input) {
   // infer rest of method
   if (isPlainObject(result)) {
     forEach(OBJECT, method => trie.add(method, method));
-    return { completions: trie.find(last(args)) };
+    return {
+      completions: trie.find(last(args)) || []
+    };
   }
   if (isArray(result)) {
     forEach(ARRAY, method => trie.add(method, method));
-    return { completions: trie.find(last(args)) };
+    return {
+      completions: trie.find(last(args)) || []
+    };
   }
   return noCompletions;
 

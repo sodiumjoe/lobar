@@ -1,115 +1,139 @@
 import {
-  ary,
   assign,
   chain,
   forEach,
   isEmpty,
   isUndefined,
+  matchesProperty,
   maxBy,
   negate,
   padEnd,
+  partial,
+  partialRight,
+  property,
   size,
-  times
+  times,
+  wrap
 } from 'lodash';
-import decode from 'decode-keypress';
-import { clearLine, cursorTo } from 'readline';
-import { Observable } from 'rxjs';
 import {
   black,
   inverse,
   red
 } from 'chalk';
-import { stripIndent } from 'common-tags';
 import { copy } from 'copy-paste';
 import getBuffer from './buffer.js';
-import { stdin, stdout } from './tty.js';
 import setBlocking from '../setBlocking.js';
 import getCommands from './commands.js';
 import getComputedJson from './compute.js';
 import getOutput from './output.js';
+import { getCompletions } from './completion.js';
+import {
+  screen,
+  cursor,
+  line,
+  write,
+  keypresses,
+  dimensions
+} from './term.js';
+import { handleBufferError } from './error.js';
 
 setBlocking();
 
-const { fromEvent } = Observable;
+const hideCursorWrapper = partialRight(wrap, (func, arg) => {
+  cursor.hide();
+  func(arg);
+  cursor.show();
+});
+
+const matchesAction = partial(matchesProperty, 'action');
 
 export default function interactive(data, args, cb) {
 
-  clearScreen();
+  screen.clear();
 
-  const keypresses = fromEvent(stdin, 'data').map(ary(decode, 1)).share();
   const commands = getCommands(keypresses);
-  const [ scrollCommands, rest ] = commands.partition(({ action }) => action === 'scroll');
-  const [ copyCommands, bufferCommands ] = rest.partition(({ action }) => action === 'copy');
+  const [ scrollCommands, rest ] = commands.partition(matchesAction('scroll'));
+  const [ copyCommands, bufferCommands ] = rest.partition(matchesAction('copy'));
 
-  const buffer = getBuffer(bufferCommands, data, args)
-  .catch(handleUncaughtException)
+  const buffer = getBuffer(data, args, bufferCommands, getCompletions)
+  .catch(handleBufferError)
   .publish();
 
   copyCommands
-  .withLatestFrom(buffer, (cmd, { input }) => input)
+  .withLatestFrom(buffer, assign)
+  .pluck('input')
   .subscribe(copy);
 
-  const computedJson = getComputedJson(buffer, data);
+  const computedJson = getComputedJson(data, buffer);
 
   const prompt = buffer.combineLatest(
-    computedJson.map(negate(isUndefined)),
-    ({ pos, input }, valid) => ({ pos, input, valid})
+    computedJson.map(negate(isUndefined)).map(valid => ({ valid })),
+    assign
   );
 
-  prompt.subscribe(({ pos, input, valid }) => {
-    hideCursor();
-    cursorTo(stdout, 0, 0);
-    stdout.write(`> ${valid ? input : red(input)}`);
-    clearLine(stdout, 1);
-    cursorTo(stdout, pos + 2, 0);
-    showCursor();
-  });
+  const prefix = '> ';
+  const { length: prefixLength } = prefix;
 
-  const output = getOutput(computedJson, scrollCommands, data, stdout);
+  prompt.subscribe(hideCursorWrapper(({ pos, input, valid }) => {
+    cursor.to(0, 0);
+    write(`${prefix}${valid ? input : red(input)}`);
+    line.clear(1);
+    cursor.to(pos + prefixLength, 0);
+  }));
+
+  const output = getOutput(data, computedJson, scrollCommands, dimensions);
 
   output
   .combineLatest(buffer, assign)
-  .subscribe(({ output, pos, completions, completionPos, selectedCompletionIndex }) => {
-    hideCursor();
+  .subscribe(hideCursorWrapper(({ mode, output, pos, completions, completionPos, selectedCompletionIndex }) => {
 
     const outputLines = output.split('\n');
+    const lastIndex = outputLines.length - 1;
 
-    forEach(outputLines, (line, i) => {
-      cursorTo(stdout, 0, i + 1);
-      clearLine(stdout, 0);
-      stdout.write(`${line}`);
-      clearLine(stdout, 1);
+    cursor.to(0, 1);
+
+    forEach(outputLines, (ln, i) => {
+      line.clear(0);
+      write(`${ln}`);
+      line.clear(1);
+      i < lastIndex && write('\n');
     });
+
     // clear lines after end of output
-    times(stdout.rows - outputLines.length - 2, () => {
-      stdout.write('\n');
-      clearLine(stdout, 0);
+    times(dimensions.height - outputLines.length - 2, () => {
+      write('\n');
+      line.clear(0);
     });
-    printCompletions({ completions, completionPos, selectedCompletionIndex });
-    cursorTo(stdout, pos + 2, 0);
-    showCursor();
-  });
+
+    mode === 'insert' && printCompletions({ completions, completionPos, selectedCompletionIndex });
+
+    cursor.to(pos + 2, 0);
+
+  }));
 
   output
   .takeLast(1)
   .pluck('json')
   .subscribe(json => {
-    clearScreen();
-    cursorTo(stdout, 0, 0);
+    screen.clear();
+    cursor.to(0, 0);
     return cb(json);
   });
 
   buffer.connect();
 
-  keypresses.filter(({ name, ctrl }) => ctrl && name === 'c').subscribe(() => process.exit(0));
+  keypresses
+  .filter(property('ctrl'))
+  .filter(matchesProperty('name', 'c'))
+  .subscribe(() => process.exit(0));
 
 }
 
-function formatCompletions(completions=[], selectedCompletionIndex, height) {
+function formatCompletions(completions, selectedCompletionIndex, height) {
+
   if (isEmpty(completions)) {
     return [];
   }
-
   const scrollPos = Math.max(selectedCompletionIndex - height + 1, 0);
   const width = maxBy(completions, size).length;
   return chain(completions)
@@ -119,41 +143,10 @@ function formatCompletions(completions=[], selectedCompletionIndex, height) {
   .value();
 }
 
-function handleUncaughtException({ state: { input }, command, stack }) {
-  clearScreen();
-  cursorTo(stdout, 0, 0);
-  setBlocking();
-  console.log(stripIndent`
-    Uncaught exception
-    last input: ${JSON.stringify(input)}
-    command: ${JSON.stringify(command)}
-    stack:
-    ${stack}
-
-    Please make a bug report to: https://github.com/sodiumjoe/lobar/issues with the
-    above information and the input JSON that triggered the error. Thanks!
-  `);
-  showCursor();
-  process.exit(1);
-}
-
-function clearScreen() {
-  stdout.write('\u001b[2J');
-}
-
-function hideCursor() {
-  stdout.write('\x1b[?25l');
-}
-
-function showCursor() {
-  stdout.write('\x1b[?25h');
-}
-
 function printCompletions({ completions, completionPos, selectedCompletionIndex }) {
-  const formatted = formatCompletions(completions.slice(1), selectedCompletionIndex - 1, stdout.rows - 1);
+  const formatted = formatCompletions(completions.slice(1), selectedCompletionIndex - 1, dimensions.height - 1);
   forEach(formatted, (completion, i) => {
-    cursorTo(stdout, completionPos + 1, i + 1);
-    stdout.write(completion);
+    cursor.to(completionPos + 1, i + 1);
+    write(completion);
   });
-
 }

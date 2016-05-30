@@ -6,7 +6,7 @@ import {
 } from 'lodash';
 import sfy from 'maquillage';
 
-export default function getOutput(computedJson, scrollCommands, data, stdout) {
+export default function getOutput(data, computedJson, scrollCommands, { width, height }) {
 
   const validComputedJson = computedJson.filter(negate(isUndefined));
 
@@ -18,7 +18,7 @@ export default function getOutput(computedJson, scrollCommands, data, stdout) {
   .combineLatest(validComputedJson, (...args) => args)
   .scan((acc, [{ key }, json]) => {
 
-    const scrollPos = scrollAction(acc.scrollPos, key, acc.json, stdout.rows - 1, stdout.columns);
+    const scrollPos = scrollAction(acc.scrollPos, key, acc.json, height - 1, width);
 
     if (scrollPos === acc.scrollPos && json === acc.json) {
       return acc;
@@ -27,11 +27,12 @@ export default function getOutput(computedJson, scrollCommands, data, stdout) {
     return assign({}, acc, {
       scrollPos,
       json,
-      output: getVisible(stringify(json, stdout.columns), stdout.columns, stdout.rows - 1, scrollPos)
+      output: getVisible(stringify(json, width), width, height - 1, scrollPos)
     });
 
   }, {
     json: data,
+    output: getVisible(stringify(data, width), width, height - 1, 0),
     scrollPos: 0
   })
   .distinctUntilChanged()
