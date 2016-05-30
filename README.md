@@ -124,14 +124,3 @@ $ LOBAR_PRETTY_PRINT=true lbr -d '{"foo": "bar"}' .foo
 I really like [jq](https://stedolan.github.io/jq/), but I have to look up the
 syntax all the time. As a javascript developer, I already know lodash, and it's
 generally enough for what I want to do at the command line.
-
-## TODO
-
-* tests
-* interactive mode
-  - factor out line-editor, vim-commands
-  - history
-  - commands:
-    - R
-    - V
-    - v

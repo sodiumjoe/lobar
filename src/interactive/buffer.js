@@ -9,11 +9,11 @@ import {
   some
 } from 'lodash';
 import * as actions from './actions.js';
-import { getCompletions } from './completion.js';
+import { BufferError } from './error.js';
 
 const UNDO_KEYS = ['input', 'pos'];
 
-export default function buffer(commands, data, initialArgs) {
+export default function buffer(data, initialArgs, commands, getCompletions = () => ({ completions: [], completionPos: 0 })) {
 
   const initialInput = parsePreserveQuotes(initialArgs).join(' ');
 
@@ -110,27 +110,18 @@ export default function buffer(commands, data, initialArgs) {
           ? state.undos
           : state.undos.concat(lastState);
 
-        const {
-          completions,
-          completionPos
-        } = getCompletions(data, input, pos);
-
-        const selectedCompletionIndex = 0;
-
         return assign(state, {
-          completions,
-          completionPos,
-          selectedCompletionIndex,
+          selectedCompletionIndex: 0,
           pos,
           input,
           undos,
           redos: []
-        });
+        }, getCompletions(data, input, pos));
 
       }
 
       if (pos !== state.pos) {
-        return assign(state, { pos });
+        return assign(state, { pos }, getCompletions(data, input, pos));
       }
 
       return state;
@@ -153,12 +144,3 @@ const parsePreserveQuotes = args => map(args, arg => {
   }
   return arg;
 });
-
-function BufferError(error, { state, command }) {
-  this.name = 'BufferError';
-  this.message = error.message;
-  this.stack = error.stack;
-  assign(this, { state, command });
-}
-BufferError.prototype = Object.create(Error.prototype);
-BufferError.prototype.constructor = BufferError;
