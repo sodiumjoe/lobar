@@ -100,7 +100,7 @@ export default function interactive(data, args, cb) {
     });
 
     // clear lines after end of output
-    times(dimensions.height - outputLines.length - 2, () => {
+    times(dimensions.height - outputLines.length - 1, () => {
       write('\n');
       line.clear(0);
     });
