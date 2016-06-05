@@ -35,7 +35,7 @@ import {
   keypresses,
   dimensions
 } from './term.js';
-import { handleBufferError } from './error.js';
+import { handleError } from './error.js';
 
 setBlocking();
 
@@ -56,10 +56,10 @@ export default function interactive(data, args, cb) {
   const [ copyCommands, bufferCommands ] = rest.partition(matchesAction('copy'));
 
   const buffer = getBuffer(data, args, bufferCommands, getCompletions)
-  .catch(handleBufferError)
+  .catch(onError)
   .publish();
 
-  copyCommands
+  const copySubscription = copyCommands
   .withLatestFrom(buffer, assign)
   .pluck('input')
   .subscribe(copy);
@@ -74,18 +74,19 @@ export default function interactive(data, args, cb) {
   const prefix = '> ';
   const { length: prefixLength } = prefix;
 
-  prompt.subscribe(hideCursorWrapper(({ pos, input, valid }) => {
+  const promptSubscription = prompt.do(hideCursorWrapper(({ pos, input, valid }) => {
     cursor.to(0, 0);
     write(`${prefix}${valid ? input : red(input)}`);
     line.clear(1);
     cursor.to(pos + prefixLength, 0);
-  }));
+  }))
+  .subscribe(null, onError);
 
   const output = getOutput(data, computedJson, scrollCommands, dimensions);
 
-  output
+  const outputSubscription = output
   .combineLatest(buffer, assign)
-  .subscribe(hideCursorWrapper(({ mode, output, pos, completions, completionPos, selectedCompletionIndex }) => {
+  .do(hideCursorWrapper(({ mode, output, pos, completions, completionPos, selectedCompletionIndex }) => {
 
     const outputLines = output.split('\n');
     const lastIndex = outputLines.length - 1;
@@ -109,23 +110,38 @@ export default function interactive(data, args, cb) {
 
     cursor.to(pos + 2, 0);
 
-  }));
+  }))
+  .subscribe(null, onError);
 
-  output
+  const cbSubscription = output
   .takeLast(1)
   .pluck('json')
-  .subscribe(json => {
+  .do(json => {
     screen.clear();
     cursor.to(0, 0);
     return cb(json);
-  });
+  })
+  .subscribe(null, onError);
 
   buffer.connect();
 
-  keypresses
+  const processExitSubscription = keypresses
   .filter(property('ctrl'))
   .filter(matchesProperty('name', 'c'))
-  .subscribe(() => process.exit(0));
+  .subscribe(process.exit.bind(process, 0), onError);
+
+  const subscriptions = [
+    copySubscription,
+    promptSubscription,
+    outputSubscription,
+    cbSubscription,
+    processExitSubscription
+  ];
+
+  function onError(e) {
+    forEach(subscriptions, subscription => subscription.unsubscribe());
+    handleError(e);
+  }
 
 }
 

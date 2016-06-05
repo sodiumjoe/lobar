@@ -22,18 +22,28 @@ const noCompletions = {
 export function getCompletions(data, input, pos) {
   const partialInput = input.slice(0, pos);
   const args = parseArgs(parse(partialInput));
-  const {
-    completions = [],
-    completionPos = chain(partialInput)
-      .findLastIndex(ch => includes([' ', '.'], ch))
-      .thru(i => i === -1 ? 0 : i + 1)
-      .value()
-  } = getCompletionList(data, args, partialInput);
-  const preCompletionInput = input.slice(completionPos, pos);
-  return {
-    completions: chain([preCompletionInput]).concat(completions).uniq().value(),
-    completionPos
-  };
+  const defaultCompletionPos = chain(partialInput)
+    .findLastIndex(ch => includes([' ', '.'], ch))
+    .thru(i => i === -1 ? 0 : i + 1)
+    .value();
+
+  try {
+    const {
+      completions = [],
+      completionPos = defaultCompletionPos
+    } = getCompletionList(data, args, partialInput);
+    const preCompletionInput = input.slice(completionPos, pos);
+    return {
+      completions: chain([preCompletionInput]).concat(completions).uniq().value(),
+      completionPos
+    };
+  } catch(e) {
+    const preCompletionInput = input.slice(defaultCompletionPos, pos);
+    return {
+      completions: [preCompletionInput],
+      completionPos: defaultCompletionPos
+    };
+  }
 }
 
 function getCompletionList(data, args, input) {

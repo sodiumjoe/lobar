@@ -1,4 +1,3 @@
-import { assign } from 'lodash';
 import { stripIndent } from 'common-tags';
 import setBlocking from '../setBlocking.js';
 import {
@@ -7,16 +6,12 @@ import {
   write
 } from './term.js';
 
-
-export function handleBufferError({ state: { input }, command, stack }) {
+export function handleError({ message, stack }) {
   screen.clear();
   cursor.to(0, 0);
   setBlocking();
   write(stripIndent`
-    Uncaught exception
-    last input: ${JSON.stringify(input)}
-    command: ${JSON.stringify(command)}
-    stack:
+    ${message}
     ${stack}
 
     Please make a bug report to: https://github.com/sodiumjoe/lobar/issues with the
@@ -26,11 +21,14 @@ export function handleBufferError({ state: { input }, command, stack }) {
   process.exit(1);
 }
 
-export function BufferError(error, { state, command }) {
+export function BufferError({ stack, message }, { state: { input }, command }) {
   this.name = 'BufferError';
-  this.message = error.message;
-  this.stack = error.stack;
-  assign(this, { state, command });
+  this.message = stripIndent`
+    ${message}
+    last input: ${JSON.stringify(input)}
+    command: ${JSON.stringify(command)}
+  `;
+  this.stack = stack;
 }
 BufferError.prototype = Object.create(Error.prototype);
 BufferError.prototype.constructor = BufferError;
