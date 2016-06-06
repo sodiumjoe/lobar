@@ -1,8 +1,11 @@
 import _, {
-  assign,
+  castArray,
   chain,
   includes,
-  isNull,
+  isFunction,
+  isString,
+  isUndefined,
+  map,
   reduce
 } from 'lodash';
 import vm from 'vm';
@@ -11,47 +14,36 @@ const lodashContext = new vm.createContext(_);
 
 export function evalChain(data, args, verbose) {
 
-  const pairs = makePairs(args);
-
   verbose && verbose > 1 && console.log('lodash string:');
-  verbose && verbose > 1 && console.log(reduce(pairs, (memo, [method, arg]) => {
-    return `${memo}.${method}(${arg})`;
+
+  const evaluatedArgs = map(args, ({ method, arg }) => {
+    if (includes(['name', 'VERSION', 'arguments', 'apply', 'call'], arg)) {
+      return { method, args: castArray(arg) };
+    }
+    try {
+      return { method, args: castArray(evalWith(arg, lodashContext)) };
+    } catch(e) {
+      return { method, args: castArray(arg) };
+    }
+  });
+
+  verbose && verbose > 1 && console.log(reduce(evaluatedArgs, (memo, { method, args }) => {
+    const argString = map(args, arg => isUndefined(arg)
+      ? ''
+      : isString(arg)
+        ? `"${arg}"`
+        : isFunction(arg)
+          ? arg.name
+          : arg).join(', ');
+    return `${memo}.${method}(${argString})`;
   }, '_.chain(data)') + '.value()');
 
-  return reduce(pairs, (chainObj, [method, arg]) => {
-
-    if (includes(['name', 'VERSION', 'arguments', 'apply', 'call'], arg)) {
-      return chainObj[method](arg);
-    }
-
-    try {
-      const evaluatedArg = evalWith(arg, lodashContext);
-      return chainObj[method](evaluatedArg);
-    } catch(e) {
-      return chainObj[method](arg);
-    }
-
-
-  }, chain(data)).value();
+  return reduce(evaluatedArgs, (chainObj, { method, args }) => chainObj[method](...args), chain(data))
+  .value();
 
 }
 
 export function evalWith(str, context) {
   const script = new vm.Script(str);
   return script.runInContext(context);
-}
-
-function makePairs(args) {
-  return reduce(args, (memo, arg) => {
-    if (isNull(memo.method)) {
-      return assign(memo, { method: arg });
-    }
-    return assign(memo, {
-      pairs: memo.pairs.concat([[memo.method, arg]]),
-      method: null
-    });
-  }, {
-    method: null,
-    pairs: []
-  }).pairs;
 }

@@ -1,10 +1,12 @@
-import {
+import _, {
+  assign,
   chain,
   dropRight,
   first,
   forEach,
   includes,
   isArray,
+  isEmpty,
   isPlainObject,
   keys,
   last
@@ -14,10 +16,6 @@ import { parse } from 'shell-quote';
 import { parseArgs } from '../parseArgs.js';
 import { evalChain } from '../eval.js';
 import { ARRAY, ARRAY_MATCHES, OBJECT, OBJECT_MATCHES } from './constants.js';
-
-const noCompletions = {
-  completions: []
-};
 
 export function getCompletions(data, input, pos) {
   const partialInput = input.slice(0, pos);
@@ -48,127 +46,94 @@ export function getCompletions(data, input, pos) {
 
 function getCompletionList(data, args, input) {
 
-  const trie = new Trie();
+  const { method, arg } = last(args);
 
-  if (args.length % 2 === 0) {
-
-    // infer possible next method
-    if (last(input) === ' ') {
-      const result = evalChain(data, args);
-      if (isPlainObject(result)) {
-        return {
-          completions: OBJECT
-        };
-      }
-      if (isArray(result)) {
-        return {
-          completions: ARRAY
-        };
-      }
-      return noCompletions;
-    }
-
-    // infer rest of current arg
-    const [currentMethod, currentArg] = args.slice(-2);
-    const result = evalChain(data, dropRight(args, 2));
-    if (currentMethod === 'get') {
-      forEach(keys(result), key => trie.add(key, key));
-      return {
-        completions: trie.find(currentArg) || []
-      };
-    }
-    if (isArray(result) && includes(ARRAY_MATCHES, currentMethod)) {
-      const item = first(result);
-      if (isPlainObject(item)) {
-        forEach(keys(item), key => trie.add(key, key));
-        return {
-          completions: trie.find(currentArg) || []
-        };
-      }
-    }
-    if (isPlainObject(result)) {
-      if (includes(OBJECT_MATCHES, currentMethod)) {
-        forEach(keys(result), key => trie.add(key, key));
-        return {
-          completions: trie.find(currentArg) || []
-        };
-      }
-      if (currentMethod === 'mapValues') {
-        const firstValue = chain(result).values().first().value();
-        forEach(keys(firstValue), key => trie.add(key, key));
-        if (isPlainObject(firstValue)) {
-          return {
-            completions: trie.find(currentArg) || []
-          };
-        }
-        if (isArray(firstValue)) {
-          forEach(ARRAY, key => trie.add(key, key));
-          return {
-            completions: trie.find(currentArg) || []
-          };
-        }
-      }
-    }
-    return noCompletions;
-  }
-
-  const result = evalChain(data, dropRight(args));
-  const currentMethod = last(args);
-
-  // infer `get` path
-  if (last(input) === '.' || (currentMethod === 'get' && last(input) === ' ')) {
+  if (last(input) === '.') {
     return {
-      completions: keys(result),
-      completionPos: input.length
+      completionPos: input.length,
+      completions: inferArg(data, dropRight(args), method)
     };
   }
 
-  // infer next arg
   if (last(input) === ' ') {
-    if (isArray(result) && includes(ARRAY_MATCHES, currentMethod)) {
-      const item = first(result);
-      if (isPlainObject(item)) {
-        return {
-          completions: keys(item)
-        };
-      }
+
+    // single arg method
+    if (_[method].length === 1) {
+      return { completions: inferMethod(data, args) };
     }
-    if (isPlainObject(result)) {
-      if (includes(OBJECT_MATCHES, currentMethod)) {
-        return {
-          completions: keys(result)
-        };
-      }
-      if (currentMethod === 'mapValues') {
-        const firstValue = chain(result).values().first().value();
-        if (isPlainObject(firstValue)) {
-          return {
-            completions: keys(firstValue)
-          };
-        }
-        if (isArray(firstValue)) {
-          return {
-            completions: ARRAY
-          };
-        }
-      }
+
+    // complete method/arg pair
+    if (!isEmpty(arg)) {
+      return { completions: inferMethod(data, args) };
     }
-    return noCompletions;
+
+    // incomplete method/arg pair
+    if (isEmpty(arg)) {
+      return { completions: inferArg(data, dropRight(args), method) };
+    }
+
   }
 
+  // mid-method
   // infer rest of method
-  if (isPlainObject(result)) {
-    forEach(OBJECT, method => trie.add(method, method));
-    return {
-      completions: trie.find(last(args)) || []
-    };
+  if (isEmpty(arg)) {
+    return { completions: inferMethod(data, dropRight(args), method) };
   }
-  if (isArray(result)) {
-    forEach(ARRAY, method => trie.add(method, method));
-    return {
-      completions: trie.find(last(args)) || []
-    };
-  }
-  return noCompletions;
 
+  // mid-arg
+  // infer rest of arg
+  return { completions: inferArg(data, dropRight(args), method, arg) };
+
+}
+
+function inferMethod(data, args, methodFragment) {
+  const result = evalChain(data, args);
+  const completions = isPlainObject(result)
+    ? OBJECT
+    : isArray(result)
+      ? ARRAY
+      : [];
+  if (!methodFragment) {
+    return completions;
+  }
+  const trie = new Trie();
+  forEach(completions, method => trie.add(method, method));
+  return trie.find(methodFragment);
+}
+
+function inferArg(data, args, method, argFragment) {
+  const result = evalChain(data, args);
+  const completions = getArgCompletions(result, method);
+  if (!argFragment) {
+    return completions;
+  }
+  const trie = new Trie();
+  forEach(completions, arg => trie.add(arg, arg));
+  return trie.find(argFragment);
+}
+
+function getArgCompletions(result, method) {
+  if (
+    isArray(result)
+    && includes(ARRAY_MATCHES, method)
+    && isPlainObject(first(result))
+  ) {
+    return chain(result).flatMap(keys).uniq().value();
+  }
+  if (isPlainObject(result)) {
+    if (includes(OBJECT_MATCHES.concat('get'), method)) {
+      return keys(result);
+    }
+    if (method === 'mapValues') {
+      const values = values(result);
+      const firstValue = first(values);
+      if (isPlainObject(firstValue)) {
+        return chain(values).flatMap(keys).uniq().value();
+      }
+      if (isArray(firstValue)) {
+        return ARRAY;
+      }
+    }
+  }
+  return [];
 }
