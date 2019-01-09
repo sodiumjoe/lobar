@@ -10,7 +10,7 @@ import _, {
 } from 'lodash';
 import vm from 'vm';
 
-const lodashContext = new vm.createContext(_);
+const lodashContext = new vm.createContext(Object.assign({}, _));
 
 export function evalChain(data, args, verbose) {
 
